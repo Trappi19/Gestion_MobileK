@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5"
+    tools:context=".MainActivity">
+
+    <!-- Header avec titre et menu 3 points -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#4A90E2"
+        android:padding="16dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Titre à gauche -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Last Meal Memory"
+            android:textSize="20sp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
+
+        <!-- Menu 3 points à droite -->
+        <ImageButton
+            android:id="@+id/btnMenu"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_more_vert"
+            android:scaleType="centerInside"
+            android:contentDescription="Menu"
+            android:tint="@android:color/white" />
+
+    </LinearLayout>
+
+    <!-- Contenu central : 4 boutons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp">
+
+        <!-- 4 boutons en grille 2x2 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="32dp">
+
+            <!-- Bouton Plats -->
+            <Button
+                android:id="@+id/btnPlats"
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_weight="1"
+                android:layout_margin="12dp"
+                android:text="Plats"
+                android:textSize="16sp"
+                android:textColor="@android:color/white"
+                android:background="@drawable/btn_primary_rounded"
+                android:elevation="8dp" />
+
+            <!-- Bouton Personnes -->
+            <Button
+                android:id="@+id/btnPersonnes"
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_weight="1"
+                android:layout_margin="12dp"
+                android:text="Personnes"
+                android:textSize="16sp"
+                android:textColor="@android:color/white"
+                android:background="@drawable/btn_primary_rounded"
+                android:elevation="8dp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Bouton Ingrédients -->
+            <Button
+                android:id="@+id/btnIngredients"
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_weight="1"
+                android:layout_margin="12dp"
+                android:text="Ingrédients"
+                android:textSize="16sp"
+                android:textColor="@android:color/white"
+                android:background="@drawable/btn_secondary_rounded"
+                android:elevation="8dp" />
+
+            <!-- Bouton Future Recettes -->
+            <Button
+                android:id="@+id/btnFutureRecettes"
+                android:layout_width="0dp"
+                android:layout_height="120dp"
+                android:layout_weight="1"
+                android:layout_margin="12dp"
+                android:text="Future Recettes"
+                android:textSize="16sp"
+                android:textColor="@android:color/white"
+                android:background="@drawable/btn_secondary_rounded"
+                android:elevation="8dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Footer noir avec Historique -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#1A1A1A"
+        android:gravity="center"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:text="Historique"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+    <!-- Espace vide en bas du footer (pour futures listes) -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="120dp"
+        android:background="@android:color/transparent" />
+
+</LinearLayout>
