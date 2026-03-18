@@ -4,8 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#F5F5F5"
+    android:orientation="vertical"
     tools:context=".MainActivity">
 
     <!-- Header avec titre et menu 3 points -->
@@ -13,138 +13,126 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#4A90E2"
-        android:padding="16dp"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:padding="16dp">
 
-        <!-- Titre à gauche -->
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:fontFamily="sans-serif-medium"
             android:text="Last Meal Memory"
-            android:textSize="20sp"
             android:textColor="@android:color/white"
-            android:textStyle="bold"
-            android:fontFamily="sans-serif-medium" />
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
-        <!-- Menu 3 points à droite -->
         <ImageButton
             android:id="@+id/btnMenu"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_more_vert"
-            android:scaleType="centerInside"
             android:contentDescription="Menu"
-            android:tint="@android:color/white" />
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_more_vert"
+            app:tint="@android:color/white" />
 
     </LinearLayout>
 
-    <!-- Contenu central : 4 boutons -->
+    <!-- Contenu central -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:orientation="vertical"
         android:gravity="center"
+        android:orientation="vertical"
         android:padding="32dp">
+
+        <!-- Stats depuis la BDD -->
+        <TextView
+            android:id="@+id/tvStatsPlats"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Plats: 0"
+            android:textColor="@android:color/black" />
+
+        <TextView
+            android:id="@+id/tvStatsHistorique"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:text="Historique: 0"
+            android:textColor="@android:color/black" />
 
         <!-- 4 boutons en grille 2x2 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
+            android:layout_marginBottom="32dp"
             android:gravity="center"
-            android:layout_marginBottom="32dp">
+            android:orientation="horizontal">
 
-            <!-- Bouton Plats -->
             <Button
                 android:id="@+id/btnPlats"
                 android:layout_width="0dp"
                 android:layout_height="120dp"
-                android:layout_weight="1"
                 android:layout_margin="12dp"
-                android:text="Plats"
-                android:textSize="16sp"
-                android:textColor="@android:color/white"
-                android:background="@drawable/btn_primary_rounded"
-                android:elevation="8dp" />
+                android:layout_weight="1"
+                android:text="Plats" />
 
-            <!-- Bouton Personnes -->
             <Button
                 android:id="@+id/btnPersonnes"
                 android:layout_width="0dp"
                 android:layout_height="120dp"
-                android:layout_weight="1"
                 android:layout_margin="12dp"
-                android:text="Personnes"
-                android:textSize="16sp"
-                android:textColor="@android:color/white"
-                android:background="@drawable/btn_primary_rounded"
-                android:elevation="8dp" />
+                android:layout_weight="1"
+                android:text="Personnes" />
 
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center">
+            android:gravity="center"
+            android:orientation="horizontal">
 
-            <!-- Bouton Ingrédients -->
             <Button
                 android:id="@+id/btnIngredients"
                 android:layout_width="0dp"
                 android:layout_height="120dp"
-                android:layout_weight="1"
                 android:layout_margin="12dp"
-                android:text="Ingrédients"
-                android:textSize="16sp"
-                android:textColor="@android:color/white"
-                android:background="@drawable/btn_secondary_rounded"
-                android:elevation="8dp" />
+                android:layout_weight="1"
+                android:text="Ingrédients" />
 
-            <!-- Bouton Future Recettes -->
             <Button
                 android:id="@+id/btnFutureRecettes"
                 android:layout_width="0dp"
                 android:layout_height="120dp"
-                android:layout_weight="1"
                 android:layout_margin="12dp"
-                android:text="Future Recettes"
-                android:textSize="16sp"
-                android:textColor="@android:color/white"
-                android:background="@drawable/btn_secondary_rounded"
-                android:elevation="8dp" />
+                android:layout_weight="1"
+                android:text="Future Recettes" />
 
         </LinearLayout>
 
     </LinearLayout>
 
-    <!-- Footer noir avec Historique -->
+    <!-- Footer noir avec bouton Historique -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#1A1A1A"
         android:gravity="center"
+        android:orientation="horizontal"
         android:padding="16dp">
 
-        <TextView
+        <Button
+            android:id="@+id/btnHistorique"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-medium"
             android:text="Historique"
-            android:textColor="@android:color/white"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:textColor="@android:color/white" />
 
     </LinearLayout>
-
-    <!-- Espace vide en bas du footer (pour futures listes) -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:background="@android:color/transparent" />
 
 </LinearLayout>

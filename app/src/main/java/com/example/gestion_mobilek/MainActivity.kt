@@ -1,25 +1,77 @@
 package com.example.gestion_mobilek
 
+import android.database.Cursor
+import android.database.sqlite.SQLiteException
 import android.os.Bundle
-import android.widget.Button
-import android.widget.ImageButton
-import androidx.activity.enableEdgeToEdge
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import com.example.gestion_mobilek.databinding.ActivityMainBinding
+import android.content.Intent
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityMainBinding
+    private lateinit var dbHelper: DatabaseHelper
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        // Écouteurs sur les boutons
-        findViewById<Button>(R.id.btnPlats).setOnClickListener {
-            // TODO: Ouvrir liste des plats
+        dbHelper = DatabaseHelper(this)
+
+        updateStatsFromDB()   // TextView liés à la BDD
+
+        // Clics boutons : pour l’instant juste des Toast
+        binding.btnPlats.setOnClickListener {
+            Toast.makeText(this, "Ouvrir écran Plats", Toast.LENGTH_SHORT).show()
         }
 
-        findViewById<ImageButton>(R.id.btnMenu).setOnClickListener {
-            // TODO: Ouvrir menu (PopupMenu)
+        binding.btnPersonnes.setOnClickListener {
+            val intent = Intent(this, PersonListActivity::class.java)
+            startActivity(intent)
+        }
+
+
+        binding.btnIngredients.setOnClickListener {
+            Toast.makeText(this, "Ouvrir écran Ingrédients", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnFutureRecettes.setOnClickListener {
+            Toast.makeText(this, "Ouvrir écran Futures Recettes", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnHistorique.setOnClickListener {
+            Toast.makeText(this, "Ouvrir Historique", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnMenu.setOnClickListener {
+            Toast.makeText(this, "Menu à implémenter", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateStatsFromDB() {
+        try {
+            val db = dbHelper.getDatabase()
+
+            // Compteur plats
+            val cursorPlats: Cursor =
+                db.rawQuery("SELECT COUNT(*) FROM plats", null)
+            cursorPlats.moveToFirst()
+            val nbPlats = cursorPlats.getInt(0)
+            cursorPlats.close()
+            binding.tvStatsPlats.text = "Plats: $nbPlats"
+
+            // Compteur historique
+            val cursorHisto: Cursor =
+                db.rawQuery("SELECT COUNT(*) FROM historique", null)
+            cursorHisto.moveToFirst()
+            val nbHisto = cursorHisto.getInt(0)
+            cursorHisto.close()
+            binding.tvStatsHistorique.text = "Historique: $nbHisto"
+
+        } catch (e: SQLiteException) {
+            Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 }
