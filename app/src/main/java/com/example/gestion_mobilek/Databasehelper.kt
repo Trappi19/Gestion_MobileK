@@ -11,40 +11,37 @@ class DatabaseHelper(private val context: Context) :
     SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
 
     companion object {
-        private const val DB_NAME = "bdd.db"          // TON FICHIER
+        private const val DB_NAME = "bdd.db"
         private const val DB_VERSION = 1
+        private var dbInstance: SQLiteDatabase? = null  // Instance unique
+        private var copied = false  // Flag copie par session
     }
 
-    override fun onCreate(db: SQLiteDatabase?) {
-        // Vide, car BDD déjà créée dans DBeaver
-    }
-
-    override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        // À gérer plus tard si changement de structure
-    }
+    override fun onCreate(db: SQLiteDatabase?) {}
+    override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {}
 
     fun getDatabase(): SQLiteDatabase {
-        createOrOverwriteDatabase()
-        return SQLiteDatabase.openDatabase(
-            context.getDatabasePath(DB_NAME).path,
-            null,
-            SQLiteDatabase.OPEN_READWRITE
-        )
-    }
-
-    // DEV : recopie à CHAQUE lancement (comme ton Unity)
-    private fun createOrOverwriteDatabase() {
-        val dbFile = context.getDatabasePath(DB_NAME)
-        if (!dbFile.parentFile.exists()) {
-            dbFile.parentFile?.mkdirs()
+        // Ferme et rouvre seulement si pas encore fait dans cette session
+        if (dbInstance == null || !dbInstance!!.isOpen) {
+            if (!copied) {
+                copyDatabaseFromAssets()  // Copie UNE SEULE fois au 1er appel
+                copied = true
+            }
+            val dbPath = context.getDatabasePath(DB_NAME).path
+            dbInstance = SQLiteDatabase.openDatabase(
+                dbPath, null, SQLiteDatabase.OPEN_READWRITE
+            )
         }
-        copyDatabaseFromAssets(dbFile)
+        return dbInstance!!
     }
 
-    private fun copyDatabaseFromAssets(outFile: File) {
+    private fun copyDatabaseFromAssets() {
+        val dbFile = context.getDatabasePath(DB_NAME)
+        if (!dbFile.parentFile!!.exists()) dbFile.parentFile!!.mkdirs()
+
         try {
             context.assets.open(DB_NAME).use { input ->
-                FileOutputStream(outFile).use { output ->
+                FileOutputStream(dbFile).use { output ->
                     val buffer = ByteArray(1024)
                     var length: Int
                     while (input.read(buffer).also { length = it } > 0) {

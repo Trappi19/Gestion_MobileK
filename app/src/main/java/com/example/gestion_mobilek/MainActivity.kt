@@ -22,20 +22,24 @@ class MainActivity : AppCompatActivity() {
 
         updateStatsFromDB()   // TextView liés à la BDD
 
-        // Clics boutons : pour l’instant juste des Toast
-        binding.btnPlats.setOnClickListener {
-            Toast.makeText(this, "Ouvrir écran Plats", Toast.LENGTH_SHORT).show()
-        }
 
         binding.btnPersonnes.setOnClickListener {
             val intent = Intent(this, PersonListActivity::class.java)
             startActivity(intent)
         }
 
-
         binding.btnIngredients.setOnClickListener {
-            Toast.makeText(this, "Ouvrir écran Ingrédients", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, ItemListActivity::class.java)
+            intent.putExtra("TYPE", "ingredient")
+            startActivity(intent)
         }
+
+        binding.btnPlats.setOnClickListener {
+            val intent = Intent(this, ItemListActivity::class.java)
+            intent.putExtra("TYPE", "plat")
+            startActivity(intent)
+        }
+
 
         binding.btnFutureRecettes.setOnClickListener {
             Toast.makeText(this, "Ouvrir écran Futures Recettes", Toast.LENGTH_SHORT).show()

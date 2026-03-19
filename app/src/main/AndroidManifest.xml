@@ -27,6 +27,11 @@
             android:name=".PersonListActivity"
             android:exported="false" />
 
+        <activity android:name=".AddPersonActivity" android:exported="false" />
+        <activity android:name=".ItemListActivity" android:exported="false"/>
+        <activity android:name=".AddItemActivity" android:exported="false"/>
+
+
     </application>
 
 </manifest>
