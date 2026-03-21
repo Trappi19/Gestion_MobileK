@@ -1,7 +1,25 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.Gestion_MobileK" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
-        <!-- <item name="colorPrimary">@color/my_dark_primary</item> -->
+    <style name="Theme.Gestion_MobileK" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
+
+        <!-- Violet pour les boutons -->
+        <item name="colorPrimary">#8200AD</item>
+        <item name="colorPrimaryVariant">#6A5ACD</item>
+        <item name="colorOnPrimary">@android:color/white</item>
+
+        <!-- Bandeau bleu inchangé (défini direct en XML, pas via colorPrimary) -->
+        <item name="android:windowBackground">#F5F5F5</item>
+        <item name="android:textColor">#212121</item>
+
+        <!-- Arrondi sur tous les boutons -->
+        <item name="materialButtonStyle">@style/Widget.MaterialComponents.Button</item>
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.App.SmallComponent</item>
+    </style>
+
+    <!-- Rajoute ce style en dehors du premier -->
+    <style name="ShapeAppearance.App.SmallComponent" parent="ShapeAppearance.MaterialComponents.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>  <!-- Plus grand = plus arrondi, 50% = pilule -->
     </style>
 </resources>
+

@@ -46,73 +46,88 @@
         android:layout_weight="1"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="32dp">
+        android:padding="24dp">
 
-        <!-- Stats depuis la BDD -->
+        <!-- Stats BDD -->
         <TextView
             android:id="@+id/tvStatsPlats"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="4dp"
             android:text="Plats: 0"
-            android:textColor="@android:color/black" />
+            android:textColor="@android:color/black"/>
 
-        <TextView
-            android:id="@+id/tvStatsHistorique"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            android:text="Historique: 0"
-            android:textColor="@android:color/black" />
-
-        <!-- 4 boutons en grille 2x2 -->
+        <!-- Ligne 1 : Ingrédients + Future Recettes -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
-            android:gravity="center"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/btnPlats"
-                android:layout_width="0dp"
-                android:layout_height="120dp"
-                android:layout_margin="12dp"
-                android:layout_weight="1"
-                android:text="Plats" />
-
-            <Button
-                android:id="@+id/btnPersonnes"
-                android:layout_width="0dp"
-                android:layout_height="120dp"
-                android:layout_margin="12dp"
-                android:layout_weight="1"
-                android:text="Personnes" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
             android:gravity="center"
             android:orientation="horizontal">
 
             <Button
                 android:id="@+id/btnIngredients"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
-                android:layout_margin="12dp"
+                android:layout_height="140dp"
+                android:layout_margin="8dp"
                 android:layout_weight="1"
-                android:text="Ingrédients" />
+                android:text="Ingrédients"
+                android:textSize="18sp"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                app:cornerRadius="24dp"/>
 
             <Button
                 android:id="@+id/btnFutureRecettes"
                 android:layout_width="0dp"
-                android:layout_height="120dp"
-                android:layout_margin="12dp"
+                android:layout_height="140dp"
+                android:layout_margin="8dp"
                 android:layout_weight="1"
-                android:text="Future Recettes" />
+                android:text="Future Recettes"
+                android:textSize="18sp"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                app:cornerRadius="24dp"/>
+        </LinearLayout>
 
+        <!-- Ligne 2 : Plats + Personnes -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnPlats"
+                android:layout_width="0dp"
+                android:layout_height="140dp"
+                android:layout_margin="8dp"
+                android:layout_weight="1"
+                android:text="Plats"
+                android:textSize="18sp"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                app:cornerRadius="24dp"/>
+
+            <Button
+                android:id="@+id/btnPersonnes"
+                android:layout_width="0dp"
+                android:layout_height="140dp"
+                android:layout_margin="8dp"
+                android:layout_weight="1"
+                android:text="Personnes"
+                android:textSize="18sp"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                app:cornerRadius="24dp"/>
         </LinearLayout>
 
     </LinearLayout>
@@ -124,11 +139,11 @@
         android:background="#1A1A1A"
         android:gravity="center"
         android:orientation="horizontal"
-        android:padding="16dp">
+        android:padding="30dp">
 
         <Button
             android:id="@+id/btnHistorique"
-            android:layout_width="wrap_content"
+            android:layout_width="200dp"
             android:layout_height="wrap_content"
             android:text="Historique"
             android:textColor="@android:color/white" />

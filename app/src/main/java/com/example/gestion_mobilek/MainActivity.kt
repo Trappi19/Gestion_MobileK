@@ -7,6 +7,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.example.gestion_mobilek.databinding.ActivityMainBinding
 import android.content.Intent
+import androidx.appcompat.app.AppCompatDelegate
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -14,6 +16,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var dbHelper: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -67,12 +70,12 @@ class MainActivity : AppCompatActivity() {
             binding.tvStatsPlats.text = "Plats: $nbPlats"
 
             // Compteur historique
-            val cursorHisto: Cursor =
-                db.rawQuery("SELECT COUNT(*) FROM historique", null)
-            cursorHisto.moveToFirst()
-            val nbHisto = cursorHisto.getInt(0)
-            cursorHisto.close()
-            binding.tvStatsHistorique.text = "Historique: $nbHisto"
+            //val cursorHisto: Cursor =
+            //    db.rawQuery("SELECT COUNT(*) FROM historique", null)
+            //cursorHisto.moveToFirst()
+            //val nbHisto = cursorHisto.getInt(0)
+            //cursorHisto.close()
+            //binding.tvStatsHistorique.text = "Historique: $nbHisto"
 
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
