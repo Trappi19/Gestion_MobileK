@@ -32,6 +32,8 @@
         <activity android:name=".AddItemActivity" android:exported="false"/>
         <activity android:name=".PersonDetailActivity" android:exported="false"/>
         <activity android:name=".EditPersonActivity" android:exported="false"/>
+        <activity android:name=".HistoriqueActivity" android:exported="false"/>
+        <activity android:name=".RepasDetailActivity" android:exported="false"/>
 
 
     </application>
