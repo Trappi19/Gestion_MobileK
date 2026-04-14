@@ -14,7 +14,7 @@ class EditPersonActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
     private var personId: Int = -1
-    private var selectedDaysAgo: Int = -1
+    private var selectedDateStorage: String? = null
 
     private val likedIngredients = mutableListOf<String>()
     private val likedPlats = mutableListOf<String>()
@@ -48,13 +48,8 @@ class EditPersonActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnPickDate).setOnClickListener {
             val today = Calendar.getInstance()
             DatePickerDialog(this, { _, y, m, d ->
-                val chosen = Calendar.getInstance().apply { set(y, m, d, 0, 0, 0); set(Calendar.MILLISECOND, 0) }
-                val todayCopy = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                }
-                selectedDaysAgo = ((todayCopy.timeInMillis - chosen.timeInMillis) / 86400000L).toInt()
-                findViewById<TextView>(R.id.tvSelectedDate).text = "$d/${m + 1}/$y (il y a $selectedDaysAgo jours)"
+                selectedDateStorage = DateStorageUtils.toStorageDate(d, m, y)
+                findViewById<TextView>(R.id.tvSelectedDate).text = "$d/${m + 1}/$y"
             }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
         }
 
@@ -87,12 +82,8 @@ class EditPersonActivity : AppCompatActivity() {
             val cp = db.rawQuery("SELECT nom, dernier_passage FROM personnes WHERE id = ?", arrayOf(personId.toString()))
             if (cp.moveToFirst()) {
                 findViewById<EditText>(R.id.etName).setText(cp.getString(0))
-                selectedDaysAgo = cp.getInt(1)
-                val cal = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -selectedDaysAgo) }
-                val d = cal.get(Calendar.DAY_OF_MONTH)
-                val m = cal.get(Calendar.MONTH) + 1
-                val y = cal.get(Calendar.YEAR)
-                findViewById<TextView>(R.id.tvSelectedDate).text = "$d/$m/$y (il y a $selectedDaysAgo jours)"
+                selectedDateStorage = DateStorageUtils.normalizeStorageDate(cp.getString(1))
+                findViewById<TextView>(R.id.tvSelectedDate).text = DateStorageUtils.displayFromStorage(selectedDateStorage)
             }
             cp.close()
 
@@ -123,7 +114,7 @@ class EditPersonActivity : AppCompatActivity() {
     private fun saveChanges() {
         val name = findViewById<EditText>(R.id.etName).text.toString().trim()
         if (name.isEmpty()) { Toast.makeText(this, "Entrez un nom", Toast.LENGTH_SHORT).show(); return }
-        if (selectedDaysAgo < 0) { Toast.makeText(this, "Choisissez une date", Toast.LENGTH_SHORT).show(); return }
+        if (selectedDateStorage == null) { Toast.makeText(this, "Choisissez une date", Toast.LENGTH_SHORT).show(); return }
 
         try {
             val db = dbHelper.getDatabase()
@@ -131,7 +122,7 @@ class EditPersonActivity : AppCompatActivity() {
             // UPDATE personne
             val pv = ContentValues().apply {
                 put("nom", name)
-                put("dernier_passage", selectedDaysAgo)
+                put("dernier_passage", selectedDateStorage)
             }
             db.update("personnes", pv, "id = ?", arrayOf(personId.toString()))
 

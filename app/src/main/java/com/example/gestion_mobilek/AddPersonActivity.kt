@@ -13,7 +13,7 @@ import java.util.Calendar
 class AddPersonActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
-    private var selectedDaysAgo: Int = -1
+    private var selectedDateStorage: String? = null
 
     // Listes cochées (noms complets séparés par virgule pour la BDD)
     private val likedIngredients = mutableListOf<String>()
@@ -45,15 +45,8 @@ class AddPersonActivity : AppCompatActivity() {
         btnPickDate.setOnClickListener {
             val today = Calendar.getInstance()
             DatePickerDialog(this, { _, y, m, d ->
-                val chosen = Calendar.getInstance()
-                chosen.set(y, m, d, 0, 0, 0)
-                chosen.set(Calendar.MILLISECOND, 0)
-                val todayCopy = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
-                    set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
-                }
-                selectedDaysAgo = ((todayCopy.timeInMillis - chosen.timeInMillis) / 86400000L).toInt()
-                tvDate.text = "$d/${m + 1}/$y (il y a $selectedDaysAgo jours)"
+                selectedDateStorage = DateStorageUtils.toStorageDate(d, m, y)
+                tvDate.text = "$d/${m + 1}/$y"
             }, today.get(Calendar.YEAR), today.get(Calendar.MONTH), today.get(Calendar.DAY_OF_MONTH)).show()
         }
 
@@ -75,7 +68,7 @@ class AddPersonActivity : AppCompatActivity() {
         btnConfirm.setOnClickListener {
             val name = etName.text.toString().trim()
             if (name.isEmpty()) { Toast.makeText(this, "Entrez un nom", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
-            if (selectedDaysAgo < 0) { Toast.makeText(this, "Choisissez une date", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
+            if (selectedDateStorage == null) { Toast.makeText(this, "Choisissez une date", Toast.LENGTH_SHORT).show(); return@setOnClickListener }
 
             try {
                 val db = dbHelper.getDatabase()
@@ -83,7 +76,7 @@ class AddPersonActivity : AppCompatActivity() {
                 // INSERT personne
                 val personValues = ContentValues().apply {
                     put("nom", name)
-                    put("dernier_passage", selectedDaysAgo)
+                    put("dernier_passage", selectedDateStorage)
                 }
                 val personId = db.insert("personnes", null, personValues)
 

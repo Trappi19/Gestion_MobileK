@@ -13,7 +13,6 @@ import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
-import java.util.Calendar
 
 class PersonListActivity : AppCompatActivity() {
 
@@ -167,7 +166,7 @@ class PersonListActivity : AppCompatActivity() {
             )
             if (cursor.moveToFirst()) {
                 do {
-                    addPersonRow(cursor.getInt(0), cursor.getString(1), cursor.getInt(2))
+                    addPersonRow(cursor.getInt(0), cursor.getString(1), cursor.getString(2))
                 } while (cursor.moveToNext())
             }
             cursor.close()
@@ -176,14 +175,8 @@ class PersonListActivity : AppCompatActivity() {
         }
     }
 
-    private fun daysAgoToDateString(daysAgo: Int): String {
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, -daysAgo)
-        return "${cal.get(Calendar.DAY_OF_MONTH)}/${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.YEAR)}"
-    }
-
-    private fun addPersonRow(personId: Int, name: String, daysAgo: Int) {
-        val dateStr = daysAgoToDateString(daysAgo)
+    private fun addPersonRow(personId: Int, name: String, dateStorage: String?) {
+        val dateStr = DateStorageUtils.displayFromStorage(dateStorage)
         val row = LinearLayout(this)
         row.orientation = LinearLayout.HORIZONTAL
         row.layoutParams = LinearLayout.LayoutParams(

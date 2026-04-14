@@ -8,7 +8,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import java.util.Calendar
 
 class RepasDetailActivity : AppCompatActivity() {
 
@@ -22,7 +21,9 @@ class RepasDetailActivity : AppCompatActivity() {
 
         val nomPlat = intent.getStringExtra("NOM_PLAT") ?: ""
         val idPersonnes = intent.getStringExtra("ID_PERSONNES") ?: ""
-        val nbJours = intent.getIntExtra("NB_JOURS", 0)
+        val legacyNbJours = if (intent.hasExtra("NB_JOURS")) intent.getIntExtra("NB_JOURS", -1) else -1
+        val dateDernierRepas = intent.getStringExtra("DATE_DERNIER_REPAS")
+            ?: if (legacyNbJours >= 0) DateStorageUtils.normalizeStorageDate(legacyNbJours.toString()) else null
         val description = intent.getStringExtra("DESCRIPTION") ?: ""
 
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
@@ -31,7 +32,7 @@ class RepasDetailActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvNomPlat).text = nomPlat
 
         // Date traduite
-        findViewById<TextView>(R.id.tvDate).text = "📅 ${nbJoursToDate(nbJours)}"
+        findViewById<TextView>(R.id.tvDate).text = "📅 ${DateStorageUtils.displayFromStorage(dateDernierRepas)}"
 
         // Description
         val tvDesc = findViewById<TextView>(R.id.tvDescription)
@@ -96,12 +97,4 @@ class RepasDetailActivity : AppCompatActivity() {
         container.addView(tv)
     }
 
-    private fun nbJoursToDate(nbJours: Int): String {
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, -nbJours)
-        val jour = cal.get(Calendar.DAY_OF_MONTH)
-        val mois = cal.get(Calendar.MONTH) + 1
-        val annee = cal.get(Calendar.YEAR)
-        return "$jour/$mois/$annee"
-    }
 }

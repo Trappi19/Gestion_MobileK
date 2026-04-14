@@ -9,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import com.example.gestion_mobilek.databinding.ActivityMainBinding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import java.util.Calendar
 
 class MainActivity : AppCompatActivity() {
 
@@ -41,7 +40,7 @@ class MainActivity : AppCompatActivity() {
             })
         }
         binding.btnFutureRecettes.setOnClickListener {
-            Toast.makeText(this, "Future Recettes à venir !", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, FutureRecettesActivity::class.java))
         }
         binding.btnHistorique.setOnClickListener {
             startActivity(Intent(this, HistoriqueActivity::class.java))
@@ -53,6 +52,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        try {
+            FutureRecettesManager.migrateDueFutureRepas(dbHelper.getDatabase())
+        } catch (_: SQLiteException) {
+        }
         updateStatsFromDB()
         binding.containerLastMeals.post {
             loadLastMeals()
@@ -85,15 +88,30 @@ class MainActivity : AppCompatActivity() {
     private fun updateStatsFromDB() {
         try {
             val db = dbHelper.getDatabase()
+            val dateConfig = RepasDateCompat.resolve(db)
 
             val cp = db.rawQuery("SELECT COUNT(*) FROM plats", null)
             cp.moveToFirst()
             binding.tvStatsPlats.text = "Plats: ${cp.getInt(0)}"
             cp.close()
 
-            val ch = db.rawQuery(
-                "SELECT COUNT(*) FROM repas WHERE nb_jour_depuis_repas >= 0", null
-            )
+            val ch = if (dateConfig.isStorageDate) {
+                val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: ""
+                val orderExpr = RepasDateCompat.storageOrderExpr(dateConfig.columnName)
+                db.rawQuery(
+                    """SELECT COUNT(*)
+                       FROM repas
+                       WHERE ${dateConfig.columnName} IS NOT NULL
+                         AND TRIM(${dateConfig.columnName}) != ''
+                         AND $orderExpr < ?""",
+                    arrayOf(todaySortable)
+                )
+            } else {
+                db.rawQuery(
+                    "SELECT COUNT(*) FROM repas WHERE ${dateConfig.columnName} > 0",
+                    null
+                )
+            }
             ch.moveToFirst()
             binding.tvStatsHistorique.text = "Historique: ${ch.getInt(0)}"
             ch.close()
@@ -107,21 +125,36 @@ class MainActivity : AppCompatActivity() {
         binding.containerLastMeals.removeAllViews()
         try {
             val db = dbHelper.getDatabase()
-            val cursor = db.rawQuery(
-                """SELECT id, nom_plat, id_personnes, nb_jour_depuis_repas 
-                   FROM repas 
-                   WHERE nb_jour_depuis_repas >= 0 
-                   ORDER BY nb_jour_depuis_repas ASC 
-                   LIMIT 3""",
-                null
-            )
+            val dateConfig = RepasDateCompat.resolve(db)
+            val cursor = if (dateConfig.isStorageDate) {
+                val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: ""
+                val orderExpr = RepasDateCompat.storageOrderExpr(dateConfig.columnName)
+                db.rawQuery(
+                    """SELECT id, nom_plat, id_personnes, ${dateConfig.columnName}
+                       FROM repas
+                       WHERE ${dateConfig.columnName} IS NOT NULL AND TRIM(${dateConfig.columnName}) != ''
+                         AND $orderExpr < ?
+                       ORDER BY $orderExpr DESC
+                       LIMIT 3""",
+                    arrayOf(todaySortable)
+                )
+            } else {
+                db.rawQuery(
+                    """SELECT id, nom_plat, id_personnes, ${dateConfig.columnName}
+                       FROM repas
+                       WHERE ${dateConfig.columnName} > 0
+                       ORDER BY ${dateConfig.columnName} ASC
+                       LIMIT 3""",
+                    null
+                )
+            }
             if (cursor.moveToFirst()) {
                 do {
                     addLastMealRow(
                         cursor.getInt(0),
                         cursor.getString(1) ?: "",
                         cursor.getString(2) ?: "",
-                        cursor.getInt(3)
+                        RepasDateCompat.cursorDateAsStorage(dateConfig, cursor.getString(3))
                     )
                 } while (cursor.moveToNext())
             } else {
@@ -140,9 +173,9 @@ class MainActivity : AppCompatActivity() {
         repasId: Int,
         nomPlat: String,
         idPersonnes: String,
-        nbJours: Int
+        dateDernierRepas: String?
     ) {
-        val dateStr = nbJoursToDate(nbJours)
+        val dateStr = DateStorageUtils.displayFromStorage(dateDernierRepas)
 
         // Plats CSV : max 2 affichés
         val platsList = nomPlat.split(",").filter { it.isNotBlank() }
@@ -177,13 +210,6 @@ class MainActivity : AppCompatActivity() {
         binding.containerLastMeals.addView(btn)
     }
 
-    // ─── UTILITAIRES ────────────────────────────────────────────────
-
-    private fun nbJoursToDate(nbJours: Int): String {
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, -nbJours)
-        return "${cal.get(Calendar.DAY_OF_MONTH)}/${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.YEAR)}"
-    }
 
     private fun getPersonNames(idPersonnes: String): String {
         if (idPersonnes.isBlank()) return ""

@@ -3,7 +3,6 @@ package com.example.gestion_mobilek
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
-import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
@@ -38,6 +37,7 @@ class DatabaseHelper(private val context: Context) :
     private fun copyDatabaseFromAssets() {
         val dbFile = context.getDatabasePath(DB_NAME)
         if (!dbFile.parentFile!!.exists()) dbFile.parentFile!!.mkdirs()
+        if (dbFile.exists()) return
 
         try {
             context.assets.open(DB_NAME).use { input ->

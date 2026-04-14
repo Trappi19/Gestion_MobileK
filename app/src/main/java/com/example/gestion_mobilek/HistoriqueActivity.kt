@@ -9,7 +9,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import java.util.Calendar
 
 class HistoriqueActivity : AppCompatActivity() {
 
@@ -38,6 +37,10 @@ class HistoriqueActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        try {
+            FutureRecettesManager.migrateDueFutureRepas(dbHelper.getDatabase())
+        } catch (_: SQLiteException) {
+        }
         exitSelectionMode()
     }
 
@@ -88,21 +91,34 @@ class HistoriqueActivity : AppCompatActivity() {
     private fun loadRepas() {
         try {
             val db = dbHelper.getDatabase()
-            // Requête complète avec toutes les colonnes nécessaires
-            val cursor = db.rawQuery(
-                """SELECT id, nom_plat, id_personnes, nb_jour_repas, description 
-                   FROM repas 
-                   WHERE nb_jour_repas >= 0 
-                   ORDER BY nb_jour_repas ASC""",
-                null
-            )
+            val dateConfig = RepasDateCompat.resolve(db)
+            val cursor = if (dateConfig.isStorageDate) {
+                val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: ""
+                val orderExpr = RepasDateCompat.storageOrderExpr(dateConfig.columnName)
+                db.rawQuery(
+                    """SELECT id, nom_plat, id_personnes, ${dateConfig.columnName}, description
+                       FROM repas
+                       WHERE ${dateConfig.columnName} IS NOT NULL AND TRIM(${dateConfig.columnName}) != ''
+                         AND $orderExpr < ?
+                       ORDER BY $orderExpr DESC""",
+                    arrayOf(todaySortable)
+                )
+            } else {
+                db.rawQuery(
+                    """SELECT id, nom_plat, id_personnes, ${dateConfig.columnName}, description
+                       FROM repas
+                       WHERE ${dateConfig.columnName} > 0
+                       ORDER BY ${dateConfig.columnName} ASC""",
+                    null
+                )
+            }
             if (cursor.moveToFirst()) {
                 do {
                     addRepasRow(
                         cursor.getInt(0),       // id
                         cursor.getString(1) ?: "",  // nom_plat (CSV)
                         cursor.getString(2) ?: "",  // id_personnes (CSV)
-                        cursor.getInt(3),       // nb_jour_depuis_repas
+                        RepasDateCompat.cursorDateAsStorage(dateConfig, cursor.getString(3)),
                         cursor.getString(4) ?: ""   // description
                     )
                 } while (cursor.moveToNext())
@@ -124,10 +140,10 @@ class HistoriqueActivity : AppCompatActivity() {
         repasId: Int,
         nomPlat: String,
         idPersonnes: String,
-        nbJours: Int,
+        dateDernierRepas: String?,
         description: String
     ) {
-        val dateStr = nbJoursToDate(nbJours)
+        val dateStr = DateStorageUtils.displayFromStorage(dateDernierRepas)
 
         // Plats : max 2 affichés + "..." si plus
         val platsList = nomPlat.split(",").filter { it.isNotBlank() }
@@ -178,7 +194,7 @@ class HistoriqueActivity : AppCompatActivity() {
                     putExtra("REPAS_ID", repasId)
                     putExtra("NOM_PLAT", nomPlat)       // CSV complet
                     putExtra("ID_PERSONNES", idPersonnes)
-                    putExtra("NB_JOURS", nbJours)
+                    putExtra("DATE_DERNIER_REPAS", dateDernierRepas)
                     putExtra("DESCRIPTION", description)
                 })
             }
@@ -189,11 +205,6 @@ class HistoriqueActivity : AppCompatActivity() {
         container.addView(row)
     }
 
-    private fun nbJoursToDate(nbJours: Int): String {
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, -nbJours)
-        return "${cal.get(Calendar.DAY_OF_MONTH)}/${cal.get(Calendar.MONTH) + 1}/${cal.get(Calendar.YEAR)}"
-    }
 
     private fun getPersonNames(idPersonnes: String): String {
         if (idPersonnes.isBlank()) return ""
