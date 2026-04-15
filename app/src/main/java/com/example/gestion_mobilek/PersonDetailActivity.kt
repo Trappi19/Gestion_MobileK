@@ -1,6 +1,6 @@
 package com.example.gestion_mobilek
 
-import android.content.ContentValues
+import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
 import android.view.ViewGroup
@@ -8,6 +8,11 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 
 class PersonDetailActivity : AppCompatActivity() {
+
+    private data class TasteOption(
+        val isIngredient: Boolean,
+        val name: String
+    )
 
     private lateinit var dbHelper: DatabaseHelper
     private var personId: Int = -1
@@ -18,6 +23,12 @@ class PersonDetailActivity : AppCompatActivity() {
     private val likedPlats = mutableListOf<String>()
     private val dislikedIngredients = mutableListOf<String>()
     private val dislikedPlats = mutableListOf<String>()
+    private var pendingIsLikeForNewItem = true
+
+    companion object {
+        private const val REQUEST_ADD_INGREDIENT = 4101
+        private const val REQUEST_ADD_PLAT = 4102
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,6 +113,7 @@ class PersonDetailActivity : AppCompatActivity() {
     // Dialog multi-sélection ingrédients + plats séparés
     private fun showPickerDialog(isLike: Boolean) {
         val db = dbHelper.getDatabase()
+        pendingIsLikeForNewItem = isLike
 
         // Récupère ingrédients et plats depuis BDD
         val ingredients = mutableListOf<String>()
@@ -113,36 +125,67 @@ class PersonDetailActivity : AppCompatActivity() {
             if (c.moveToFirst()) do { plats.add(c.getString(0)) } while (c.moveToNext())
         }
 
-        // Fusionne avec séparateur lisible
-        val allItems = (ingredients.map { "🧄 $it" } + listOf("── Plats ──") + plats.map { "🍽️ $it" })
+        if (ingredients.isEmpty() && plats.isEmpty()) {
+            android.app.AlertDialog.Builder(this)
+                .setTitle(if (isLike) "Aime" else "N'aime pas")
+                .setMessage("Aucun ingrédient ou plat disponible.")
+                .setPositiveButton("+ Nouvel ingrédient") { _, _ ->
+                    startQuickAddItem("ingredient")
+                }
+                .setNeutralButton("+ Nouveau plat") { _, _ ->
+                    startQuickAddItem("plat")
+                }
+                .setNegativeButton("Annuler", null)
+                .show()
+            return
+        }
+
         val currentLikedIng = if (isLike) likedIngredients else dislikedIngredients
         val currentLikedPlat = if (isLike) likedPlats else dislikedPlats
 
-        val checked = BooleanArray(allItems.size) { idx ->
-            when {
-                idx < ingredients.size -> currentLikedIng.contains(ingredients[idx])
-                idx == ingredients.size -> false  // séparateur
-                else -> currentLikedPlat.contains(plats[idx - ingredients.size - 1])
-            }
-        }
+        val options = mutableListOf<TasteOption>()
+        options.addAll(ingredients.map { TasteOption(true, it) })
+        options.addAll(plats.map { TasteOption(false, it) })
 
-        android.app.AlertDialog.Builder(this)
-            .setTitle(if (isLike) "Aime" else "N'aime pas")
-            .setMultiChoiceItems(allItems.toTypedArray(), checked) { _, which, isChecked ->
-                if (which == ingredients.size) return@setMultiChoiceItems  // séparateur non cliquable
-                if (which < ingredients.size) {
-                    val name = ingredients[which]
-                    if (isChecked) { if (!currentLikedIng.contains(name)) currentLikedIng.add(name) }
-                    else currentLikedIng.remove(name)
-                } else {
-                    val name = plats[which - ingredients.size - 1]
-                    if (isChecked) { if (!currentLikedPlat.contains(name)) currentLikedPlat.add(name) }
-                    else currentLikedPlat.remove(name)
+        val initial = options.filter { option ->
+            if (option.isIngredient) currentLikedIng.contains(option.name) else currentLikedPlat.contains(option.name)
+        }.toSet()
+
+        SearchableMultiSelectDialog.show(
+            context = this,
+            title = if (isLike) "Aime" else "N'aime pas",
+            items = options,
+            labelOf = { if (it.isIngredient) "🧄 ${it.name}" else "🍽️ ${it.name}" },
+            initialSelection = initial,
+            neutralButtonText = "+ Nouveau",
+            onNeutral = { showQuickAddChoiceDialog() },
+            onConfirm = { selected ->
+                currentLikedIng.clear()
+                currentLikedPlat.clear()
+                selected.forEach { option ->
+                    if (option.isIngredient) currentLikedIng.add(option.name) else currentLikedPlat.add(option.name)
                 }
+                saveGoûtsToDb(isLike)
             }
-            .setPositiveButton("OK") { _, _ -> saveGoûtsToDb(isLike) }
-            .setNegativeButton("Annuler", null)
+        )
+    }
+
+    private fun showQuickAddChoiceDialog() {
+        val options = arrayOf("Nouvel ingrédient", "Nouveau plat")
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Ajouter rapidement")
+            .setItems(options) { _, which ->
+                val type = if (which == 0) "ingredient" else "plat"
+                startQuickAddItem(type)
+            }
             .show()
+    }
+
+    private fun startQuickAddItem(type: String) {
+        val requestCode = if (type == "ingredient") REQUEST_ADD_INGREDIENT else REQUEST_ADD_PLAT
+        startActivityForResult(Intent(this, AddItemActivity::class.java).apply {
+            putExtra("TYPE", type)
+        }, requestCode)
     }
 
     private fun saveGoûtsToDb(isLike: Boolean) {
@@ -195,6 +238,30 @@ class PersonDetailActivity : AppCompatActivity() {
 
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+
+        val createdItemName = data?.getStringExtra("ITEM_NAME")?.trim().orEmpty()
+        if (createdItemName.isBlank()) return
+
+        when (requestCode) {
+            REQUEST_ADD_INGREDIENT -> {
+                val target = if (pendingIsLikeForNewItem) likedIngredients else dislikedIngredients
+                if (!target.contains(createdItemName)) target.add(createdItemName)
+                saveGoûtsToDb(pendingIsLikeForNewItem)
+                showPickerDialog(pendingIsLikeForNewItem)
+            }
+
+            REQUEST_ADD_PLAT -> {
+                val target = if (pendingIsLikeForNewItem) likedPlats else dislikedPlats
+                if (!target.contains(createdItemName)) target.add(createdItemName)
+                saveGoûtsToDb(pendingIsLikeForNewItem)
+                showPickerDialog(pendingIsLikeForNewItem)
+            }
         }
     }
 

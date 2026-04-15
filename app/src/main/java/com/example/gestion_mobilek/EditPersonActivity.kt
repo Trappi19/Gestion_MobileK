@@ -151,22 +151,42 @@ class EditPersonActivity : AppCompatActivity() {
         else "SELECT nom_plat FROM plats ORDER BY nom_plat"
         val items = mutableListOf<String>()
         db.rawQuery(query, null).use { c -> if (c.moveToFirst()) do { items.add(c.getString(0)) } while (c.moveToNext()) }
-        val checked = BooleanArray(items.size) { selectedList.contains(items[it]) }
+        if (items.isEmpty()) {
+            android.app.AlertDialog.Builder(this)
+                .setTitle(if (type == "ingredient") "Ingrédients" else "Plats")
+                .setMessage("Aucun élément disponible")
+                .setPositiveButton("+ Nouveau") { _, _ ->
+                    pendingContainer = containerId.toString()
+                    startActivityForResult(
+                        Intent(this, AddItemActivity::class.java).apply { putExtra("TYPE", type) },
+                        if (type == "ingredient") REQUEST_ADD_INGREDIENT else REQUEST_ADD_PLAT
+                    )
+                }
+                .setNegativeButton("Annuler", null)
+                .show()
+            return
+        }
 
-        android.app.AlertDialog.Builder(this)
-            .setTitle(if (type == "ingredient") "Ingrédients" else "Plats")
-            .setMultiChoiceItems(items.toTypedArray(), checked) { _, which, isChecked ->
-                if (isChecked) { if (!selectedList.contains(items[which])) selectedList.add(items[which]) }
-                else selectedList.remove(items[which])
-            }
-            .setPositiveButton("OK") { _, _ -> refreshCheckedView(containerId, selectedList) }
-            .setNeutralButton("+ Nouveau") { _, _ ->
+        SearchableMultiSelectDialog.show(
+            context = this,
+            title = if (type == "ingredient") "Ingrédients" else "Plats",
+            items = items,
+            labelOf = { it },
+            initialSelection = selectedList.toSet(),
+            neutralButtonText = "+ Nouveau",
+            onNeutral = {
                 pendingContainer = containerId.toString()
-                startActivityForResult(Intent(this, AddItemActivity::class.java).apply { putExtra("TYPE", type) },
-                    if (type == "ingredient") REQUEST_ADD_INGREDIENT else REQUEST_ADD_PLAT)
+                startActivityForResult(
+                    Intent(this, AddItemActivity::class.java).apply { putExtra("TYPE", type) },
+                    if (type == "ingredient") REQUEST_ADD_INGREDIENT else REQUEST_ADD_PLAT
+                )
+            },
+            onConfirm = { selected ->
+                selectedList.clear()
+                selectedList.addAll(items.filter { selected.contains(it) })
+                refreshCheckedView(containerId, selectedList)
             }
-            .setNegativeButton("Annuler", null)
-            .show()
+        )
     }
 
     private fun refreshCheckedView(containerId: Int, list: List<String>) {
@@ -186,9 +206,23 @@ class EditPersonActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK) {
             val containerId = pendingContainer.toIntOrNull() ?: return
+            val createdItemName = data?.getStringExtra("ITEM_NAME")?.trim().orEmpty()
             when (requestCode) {
-                REQUEST_ADD_INGREDIENT -> showPickerDialog("ingredient", if (containerId == R.id.containerLikesIngredients) likedIngredients else dislikedIngredients, containerId)
-                REQUEST_ADD_PLAT -> showPickerDialog("plat", if (containerId == R.id.containerLikesPlats) likedPlats else dislikedPlats, containerId)
+                REQUEST_ADD_INGREDIENT -> {
+                    val targetList = if (containerId == R.id.containerLikesIngredients) likedIngredients else dislikedIngredients
+                    if (createdItemName.isNotBlank() && !targetList.contains(createdItemName)) {
+                        targetList.add(createdItemName)
+                    }
+                    showPickerDialog("ingredient", targetList, containerId)
+                }
+
+                REQUEST_ADD_PLAT -> {
+                    val targetList = if (containerId == R.id.containerLikesPlats) likedPlats else dislikedPlats
+                    if (createdItemName.isNotBlank() && !targetList.contains(createdItemName)) {
+                        targetList.add(createdItemName)
+                    }
+                    showPickerDialog("plat", targetList, containerId)
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.example.gestion_mobilek
 
 import android.content.ContentValues
+import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
 import android.widget.*
@@ -51,7 +52,10 @@ class AddItemActivity : AppCompatActivity() {
                 }
 
                 Toast.makeText(this, "$name ajouté !", Toast.LENGTH_SHORT).show()
-                setResult(RESULT_OK)  // Signale à AddPersonActivity de rouvrir le dialog
+                setResult(RESULT_OK, Intent().apply {
+                    putExtra("ITEM_NAME", name)
+                    putExtra("ITEM_TYPE", type)
+                })
                 finish()
             } catch (e: SQLiteException) {
                 Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()

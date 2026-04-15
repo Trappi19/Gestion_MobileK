@@ -1,4 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Gestion_MobileK</string>
+    <string name="home_title">Last Meal Memory</string>
+    <string name="home_menu">Menu</string>
+    <string name="home_quick_access">Accès rapides</string>
+    <string name="home_ingredients">Ingrédients</string>
+    <string name="home_future_recettes">Future Recettes</string>
+    <string name="home_personnes">Personnes</string>
+    <string name="home_plats">Plats</string>
+    <string name="home_historique">Historique</string>
+    <string name="home_last_meals">Derniers repas</string>
 </resources>

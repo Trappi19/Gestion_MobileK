@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteException
 object FutureRecettesManager {
 
     private const val FUTURE_TABLE = "future_repas"
+    const val NEW_DATE_COL = "date_dernier_repas"
+    private const val LEGACY_DATE_COL = "date_repas"
 
     private fun dateSortExpr(column: String): String {
         return "substr(printf('%08d', CAST($column AS INTEGER)), 5, 4) || " +
@@ -21,26 +23,48 @@ object FutureRecettesManager {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nom_plat TEXT NOT NULL,
                 id_personnes TEXT,
-                date_repas TEXT NOT NULL,
+                $NEW_DATE_COL TEXT NOT NULL,
                 description TEXT
             )
             """.trimIndent()
         )
     }
 
+    fun resolveDateColumn(db: SQLiteDatabase): String {
+        ensureSchema(db)
+        val cols = mutableSetOf<String>()
+        db.rawQuery("PRAGMA table_info($FUTURE_TABLE)", null).use { c ->
+            if (c.moveToFirst()) {
+                do {
+                    cols.add(c.getString(1))
+                } while (c.moveToNext())
+            }
+        }
+
+        return when {
+            cols.contains(NEW_DATE_COL) -> NEW_DATE_COL
+            cols.contains(LEGACY_DATE_COL) -> LEGACY_DATE_COL
+            else -> {
+                db.execSQL("ALTER TABLE $FUTURE_TABLE ADD COLUMN $NEW_DATE_COL TEXT")
+                NEW_DATE_COL
+            }
+        }
+    }
+
     fun migrateDueFutureRepas(db: SQLiteDatabase) {
         ensureSchema(db)
         val repasDateConfig = RepasDateCompat.resolve(db)
+        val futureDateCol = resolveDateColumn(db)
 
         val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: return
-        val orderExpr = dateSortExpr("date_repas")
+        val orderExpr = dateSortExpr(futureDateCol)
 
         try {
             val dueMeals = mutableListOf<ContentValues>()
             val dueIds = mutableListOf<Int>()
 
             val cursor = db.rawQuery(
-                """SELECT id, nom_plat, id_personnes, date_repas, description
+                """SELECT id, nom_plat, id_personnes, $futureDateCol, description
                    FROM $FUTURE_TABLE
                    WHERE $orderExpr < ?""",
                 arrayOf(todaySortable)

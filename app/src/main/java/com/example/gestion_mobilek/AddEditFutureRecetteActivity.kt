@@ -2,6 +2,7 @@ package com.example.gestion_mobilek
 
 import android.app.DatePickerDialog
 import android.content.ContentValues
+import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
 import android.view.ViewGroup
@@ -11,11 +12,19 @@ import java.util.Calendar
 
 class AddEditFutureRecetteActivity : AppCompatActivity() {
 
+    private data class PersonOption(val id: Int, val name: String)
+
     private lateinit var dbHelper: DatabaseHelper
     private var futureId: Int = -1
     private var selectedDateStorage: String? = null
+    private var futureDateColumn: String = "date_dernier_repas"
     private val selectedPersonIds = mutableSetOf<Int>()
     private val selectedPlats = mutableSetOf<String>()
+
+    companion object {
+        private const val REQUEST_ADD_PERSON = 3001
+        private const val REQUEST_ADD_PLAT = 3002
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,7 +34,9 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
         futureId = intent.getIntExtra("FUTURE_ID", -1)
 
         try {
-            FutureRecettesManager.ensureSchema(dbHelper.getDatabase())
+            val db = dbHelper.getDatabase()
+            FutureRecettesManager.ensureSchema(db)
+            futureDateColumn = resolveFutureDateColumn(db)
         } catch (_: SQLiteException) {
         }
 
@@ -61,7 +72,7 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
         try {
             val db = dbHelper.getDatabase()
             val cursor = db.rawQuery(
-                "SELECT nom_plat, id_personnes, date_repas, description FROM future_repas WHERE id = ?",
+                "SELECT nom_plat, id_personnes, $futureDateColumn, description FROM future_repas WHERE id = ?",
                 arrayOf(futureId.toString())
             )
             if (cursor.moveToFirst()) {
@@ -114,33 +125,41 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
     private fun showPersonsPicker() {
         try {
             val db = dbHelper.getDatabase()
-            val ids = mutableListOf<Int>()
-            val names = mutableListOf<String>()
+            val options = mutableListOf<PersonOption>()
 
             db.rawQuery("SELECT id, nom FROM personnes ORDER BY nom", null).use { c ->
                 if (c.moveToFirst()) {
                     do {
-                        ids.add(c.getInt(0))
-                        names.add(c.getString(1) ?: "")
+                        options.add(PersonOption(c.getInt(0), c.getString(1) ?: ""))
                     } while (c.moveToNext())
                 }
             }
 
-            if (ids.isEmpty()) {
-                Toast.makeText(this, "Ajoute d'abord des personnes", Toast.LENGTH_SHORT).show()
+            if (options.isEmpty()) {
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("Personnes présentes")
+                    .setMessage("Aucune personne disponible.")
+                    .setPositiveButton("+ Nouvelle personne") { _, _ -> launchQuickAddPerson() }
+                    .setNegativeButton("Annuler", null)
+                    .show()
                 return
             }
 
-            val checked = BooleanArray(ids.size) { selectedPersonIds.contains(ids[it]) }
-
-            android.app.AlertDialog.Builder(this)
-                .setTitle("Personnes présentes")
-                .setMultiChoiceItems(names.toTypedArray(), checked) { _, which, isChecked ->
-                    if (isChecked) selectedPersonIds.add(ids[which]) else selectedPersonIds.remove(ids[which])
+            val initial = options.filter { selectedPersonIds.contains(it.id) }.toSet()
+            SearchableMultiSelectDialog.show(
+                context = this,
+                title = "Personnes présentes",
+                items = options,
+                labelOf = { it.name },
+                initialSelection = initial,
+                neutralButtonText = "+ Nouvelle personne",
+                onNeutral = { launchQuickAddPerson() },
+                onConfirm = { selected ->
+                    selectedPersonIds.clear()
+                    selectedPersonIds.addAll(selected.map { it.id })
+                    refreshPersonsView()
                 }
-                .setPositiveButton("OK") { _, _ -> refreshPersonsView() }
-                .setNegativeButton("Annuler", null)
-                .show()
+            )
 
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
@@ -161,20 +180,29 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
             }
 
             if (plats.isEmpty()) {
-                Toast.makeText(this, "Ajoute d'abord des plats", Toast.LENGTH_SHORT).show()
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("Plats possibles")
+                    .setMessage("Aucun plat disponible.")
+                    .setPositiveButton("+ Nouveau plat") { _, _ -> launchQuickAddPlat() }
+                    .setNegativeButton("Annuler", null)
+                    .show()
                 return
             }
 
-            val checked = BooleanArray(plats.size) { selectedPlats.contains(plats[it]) }
-
-            android.app.AlertDialog.Builder(this)
-                .setTitle("Plats possibles")
-                .setMultiChoiceItems(plats.toTypedArray(), checked) { _, which, isChecked ->
-                    if (isChecked) selectedPlats.add(plats[which]) else selectedPlats.remove(plats[which])
+            SearchableMultiSelectDialog.show(
+                context = this,
+                title = "Plats possibles",
+                items = plats,
+                labelOf = { it },
+                initialSelection = selectedPlats.toSet(),
+                neutralButtonText = "+ Nouveau plat",
+                onNeutral = { launchQuickAddPlat() },
+                onConfirm = { selected ->
+                    selectedPlats.clear()
+                    selectedPlats.addAll(selected)
+                    refreshPlatsView()
                 }
-                .setPositiveButton("OK") { _, _ -> refreshPlatsView() }
-                .setNegativeButton("Annuler", null)
-                .show()
+            )
 
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
@@ -267,7 +295,7 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
             val values = ContentValues().apply {
                 put("nom_plat", selectedPlats.joinToString(","))
                 put("id_personnes", selectedPersonIds.joinToString(","))
-                put("date_repas", dateStorage)
+                put(futureDateColumn, dateStorage)
                 put("description", description)
             }
 
@@ -282,6 +310,53 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
             finish()
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun launchQuickAddPerson() {
+        startActivityForResult(Intent(this, AddPersonActivity::class.java), REQUEST_ADD_PERSON)
+    }
+
+    private fun launchQuickAddPlat() {
+        startActivityForResult(Intent(this, AddItemActivity::class.java).apply {
+            putExtra("TYPE", "plat")
+        }, REQUEST_ADD_PLAT)
+    }
+
+    private fun resolveFutureDateColumn(db: android.database.sqlite.SQLiteDatabase): String {
+        val cols = mutableSetOf<String>()
+        db.rawQuery("PRAGMA table_info(future_repas)", null).use { c ->
+            if (c.moveToFirst()) {
+                do {
+                    cols.add(c.getString(1))
+                } while (c.moveToNext())
+            }
+        }
+        return if (cols.contains("date_dernier_repas")) "date_dernier_repas" else "date_repas"
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+
+        when (requestCode) {
+            REQUEST_ADD_PERSON -> {
+                val createdPersonId = data?.getIntExtra("PERSON_ID", -1) ?: -1
+                if (createdPersonId > 0) {
+                    selectedPersonIds.add(createdPersonId)
+                    refreshPersonsView()
+                }
+                showPersonsPicker()
+            }
+
+            REQUEST_ADD_PLAT -> {
+                val createdPlatName = data?.getStringExtra("ITEM_NAME")?.trim().orEmpty()
+                if (createdPlatName.isNotBlank()) {
+                    selectedPlats.add(createdPlatName)
+                    refreshPlatsView()
+                }
+                showPlatsPicker()
+            }
         }
     }
 }

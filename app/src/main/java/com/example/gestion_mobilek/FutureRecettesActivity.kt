@@ -4,6 +4,8 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +18,8 @@ class FutureRecettesActivity : AppCompatActivity() {
     private lateinit var container: LinearLayout
     private var selectionMode = false
     private val selectedIds = mutableSetOf<Int>()
+    private var futureDateColumn: String = FutureRecettesManager.NEW_DATE_COL
+    private var searchQuery = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +38,16 @@ class FutureRecettesActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btnDeleteSelected).setOnClickListener {
             confirmDeleteSelected()
         }
+
+        findViewById<EditText>(R.id.etSearchFuture).addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                searchQuery = s?.toString().orEmpty().trim()
+                container.removeAllViews()
+                loadFutureRepas()
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
     }
 
     override fun onResume() {
@@ -41,6 +55,7 @@ class FutureRecettesActivity : AppCompatActivity() {
         try {
             val db = dbHelper.getDatabase()
             FutureRecettesManager.ensureSchema(db)
+            futureDateColumn = FutureRecettesManager.resolveDateColumn(db)
             FutureRecettesManager.migrateDueFutureRepas(db)
         } catch (_: SQLiteException) {
         }
@@ -69,19 +84,32 @@ class FutureRecettesActivity : AppCompatActivity() {
         try {
             val db = dbHelper.getDatabase()
             FutureRecettesManager.ensureSchema(db)
+            futureDateColumn = FutureRecettesManager.resolveDateColumn(db)
 
             val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: ""
-            val orderExpr = "substr(printf('%08d', CAST(date_repas AS INTEGER)), 5, 4) || " +
-                "substr(printf('%08d', CAST(date_repas AS INTEGER)), 3, 2) || " +
-                "substr(printf('%08d', CAST(date_repas AS INTEGER)), 1, 2)"
+            val orderExpr = "substr(printf('%08d', CAST($futureDateColumn AS INTEGER)), 5, 4) || " +
+                "substr(printf('%08d', CAST($futureDateColumn AS INTEGER)), 3, 2) || " +
+                "substr(printf('%08d', CAST($futureDateColumn AS INTEGER)), 1, 2)"
 
-            val cursor = db.rawQuery(
-                """SELECT id, nom_plat, id_personnes, date_repas, description
-                   FROM future_repas
-                   WHERE $orderExpr >= ?
-                   ORDER BY $orderExpr ASC""",
-                arrayOf(todaySortable)
-            )
+            val cursor = if (searchQuery.isBlank()) {
+                db.rawQuery(
+                    """SELECT id, nom_plat, id_personnes, $futureDateColumn, description
+                       FROM future_repas
+                       WHERE $orderExpr >= ?
+                       ORDER BY $orderExpr ASC""",
+                    arrayOf(todaySortable)
+                )
+            } else {
+                val likeSearch = "%${searchQuery.lowercase()}%"
+                db.rawQuery(
+                    """SELECT id, nom_plat, id_personnes, $futureDateColumn, description
+                       FROM future_repas
+                       WHERE $orderExpr >= ?
+                         AND (LOWER(nom_plat) LIKE ? OR LOWER(IFNULL(description, '')) LIKE ?)
+                       ORDER BY $orderExpr ASC""",
+                    arrayOf(todaySortable, likeSearch, likeSearch)
+                )
+            }
 
             if (cursor.moveToFirst()) {
                 var lastDateHeader: String? = null

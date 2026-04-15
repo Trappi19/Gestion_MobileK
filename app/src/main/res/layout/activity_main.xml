@@ -27,7 +27,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Last Meal Memory"
+                android:text="@string/home_title"
                 android:textColor="@android:color/white"
                 android:textSize="20sp"
                 android:textStyle="bold"/>
@@ -37,96 +37,111 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Menu"
+                android:contentDescription="@string/home_menu"
                 android:scaleType="centerInside"
                 android:src="@drawable/ic_more_vert"
                 app:tint="@android:color/white"/>
         </LinearLayout>
 
-        <!-- 4 boutons + stats -->
+        <!-- Zone d'actions -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:gravity="center"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="24dp"
+            android:paddingTop="32dp">
 
             <TextView
-                android:id="@+id/tvStatsPlats"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="4dp"
-                android:text="Plats: 0"
-                android:textColor="@android:color/black"/>
+                android:layout_marginBottom="18dp"
+                android:text="@string/home_quick_access"
+                android:textColor="#666666"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
 
-            <TextView
-                android:id="@+id/tvStatsHistorique"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp"
-                android:text="Historique: 0"
-                android:textColor="@android:color/black"/>
-
-            <!-- Ligne 1 -->
+            <!-- Ligne du haut -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:gravity="center"
-                android:orientation="horizontal">
+                android:gravity="center_horizontal"
+                android:orientation="horizontal"
+                android:weightSum="2">
 
                 <Button
                     android:id="@+id/btnIngredients"
                     android:layout_width="0dp"
-                    android:layout_height="140dp"
-                    android:layout_margin="8dp"
+                    android:layout_height="120dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="8dp"
                     android:layout_weight="1"
-                    android:text="Ingrédients"
+                    android:backgroundTint="#7B68EE"
+                    android:text="@string/home_ingredients"
                     android:textAllCaps="false"
+                    android:gravity="center"
                     android:textColor="@android:color/white"
-                    android:textSize="18sp"
+                    android:textSize="17sp"
                     app:cornerRadius="24dp"/>
 
                 <Button
                     android:id="@+id/btnFutureRecettes"
                     android:layout_width="0dp"
-                    android:layout_height="140dp"
-                    android:layout_margin="8dp"
+                    android:layout_height="120dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="4dp"
                     android:layout_weight="1"
-                    android:text="Future Recettes"
+                    android:backgroundTint="#7B68EE"
+                    android:text="@string/home_future_recettes"
                     android:textAllCaps="false"
+                    android:gravity="center"
                     android:textColor="@android:color/white"
-                    android:textSize="18sp"
-                    app:cornerRadius="24dp"/>
+                    android:textSize="17sp"
+                    app:cornerRadius="24dp" />
             </LinearLayout>
 
-            <!-- Ligne 2 -->
+            <!-- Bouton central mis en avant -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center"
+                android:layout_marginBottom="16dp"
+                android:gravity="center_horizontal"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnPersonnes"
+                    android:layout_width="match_parent"
+                    android:layout_height="170dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:backgroundTint="#7B68EE"
+                    android:elevation="6dp"
+                    android:text="@string/home_personnes"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="24dp"/>
+            </LinearLayout>
+
+            <!-- Action secondaire large -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_horizontal"
                 android:orientation="horizontal">
 
                 <Button
                     android:id="@+id/btnPlats"
-                    android:layout_width="0dp"
-                    android:layout_height="140dp"
-                    android:layout_margin="8dp"
-                    android:layout_weight="1"
-                    android:text="Plats"
-                    android:textAllCaps="false"
-                    android:textColor="@android:color/white"
-                    android:textSize="18sp"
-                    app:cornerRadius="24dp"/>
-
-                <Button
-                    android:id="@+id/btnPersonnes"
-                    android:layout_width="0dp"
-                    android:layout_height="140dp"
-                    android:layout_margin="8dp"
-                    android:layout_weight="1"
-                    android:text="Personnes"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:backgroundTint="#4A90E2"
+                    android:text="@string/home_plats"
                     android:textAllCaps="false"
                     android:textColor="@android:color/white"
                     android:textSize="18sp"
@@ -165,7 +180,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
             android:layout_marginBottom="16dp"
-            android:text="Historique"
+            android:text="@string/home_historique"
             android:textAllCaps="false"
             android:textColor="@android:color/white"
             android:textSize="18sp"
@@ -188,7 +203,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
             android:layout_marginStart="16dp"
-            android:text="Derniers repas"
+            android:text="@string/home_last_meals"
             android:textColor="#AAAAAA"
             android:textSize="13sp"/>
 

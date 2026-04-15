@@ -4,6 +4,8 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +18,7 @@ class HistoriqueActivity : AppCompatActivity() {
     private lateinit var container: LinearLayout
     private var selectionMode = false
     private val selectedIds = mutableSetOf<Int>()
+    private var searchQuery = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,6 +36,15 @@ class HistoriqueActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btnDeleteSelected).setOnClickListener {
             confirmDeleteSelected()
         }
+
+        findViewById<EditText>(R.id.etSearchHistorique).addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                searchQuery = s?.toString().orEmpty().trim().lowercase()
+                exitSelectionMode()
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
     }
 
     override fun onResume() {
@@ -113,7 +125,9 @@ class HistoriqueActivity : AppCompatActivity() {
                 )
             }
             if (cursor.moveToFirst()) {
+                var renderedCount = 0
                 do {
+                    val before = container.childCount
                     addRepasRow(
                         cursor.getInt(0),       // id
                         cursor.getString(1) ?: "",  // nom_plat (CSV)
@@ -121,7 +135,17 @@ class HistoriqueActivity : AppCompatActivity() {
                         RepasDateCompat.cursorDateAsStorage(dateConfig, cursor.getString(3)),
                         cursor.getString(4) ?: ""   // description
                     )
+                    if (container.childCount > before) renderedCount++
                 } while (cursor.moveToNext())
+
+                if (renderedCount == 0) {
+                    val tv = TextView(this)
+                    tv.text = "Aucun résultat"
+                    tv.textSize = 16f
+                    tv.gravity = Gravity.CENTER
+                    tv.setPadding(0, 32, 0, 0)
+                    container.addView(tv)
+                }
             } else {
                 val tv = TextView(this)
                 tv.text = "Aucun repas dans l'historique"
@@ -143,6 +167,10 @@ class HistoriqueActivity : AppCompatActivity() {
         dateDernierRepas: String?,
         description: String
     ) {
+        if (!matchesSearch(nomPlat, idPersonnes, dateDernierRepas, description)) {
+            return
+        }
+
         val dateStr = DateStorageUtils.displayFromStorage(dateDernierRepas)
 
         // Plats : max 2 affichés + "..." si plus
@@ -203,6 +231,19 @@ class HistoriqueActivity : AppCompatActivity() {
         row.addView(checkBox)
         row.addView(btn)
         container.addView(row)
+    }
+
+    private fun matchesSearch(
+        nomPlat: String,
+        idPersonnes: String,
+        dateDernierRepas: String?,
+        description: String
+    ): Boolean {
+        if (searchQuery.isBlank()) return true
+        val dateText = DateStorageUtils.displayFromStorage(dateDernierRepas).lowercase()
+        val peopleNames = getPersonNames(idPersonnes).lowercase()
+        val haystack = "${nomPlat.lowercase()} ${description.lowercase()} $peopleNames $dateText"
+        return haystack.contains(searchQuery)
     }
 
 

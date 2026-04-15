@@ -96,6 +96,10 @@ class AddPersonActivity : AppCompatActivity() {
                 db.insert("gouts", null, goutValues)
 
                 Toast.makeText(this, "$name ajouté !", Toast.LENGTH_SHORT).show()
+                setResult(RESULT_OK, Intent().apply {
+                    putExtra("PERSON_ID", personId.toInt())
+                    putExtra("PERSON_NAME", name)
+                })
                 finish()
             } catch (e: SQLiteException) {
                 Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
@@ -106,8 +110,6 @@ class AddPersonActivity : AppCompatActivity() {
     // Dialog avec liste cochable + bouton "Nouveau"
     private fun showPickerDialog(type: String, selectedList: MutableList<String>, containerId: Int) {
         val db = dbHelper.getDatabase()
-        val table = if (type == "ingredient") "ingrédient" else "plats"
-        val column = if (type == "ingredient") "nom_ingredient" else "nom_plat"
         val query = if (type == "ingredient") "SELECT nom_ingredient FROM ingrédient ORDER BY nom_ingredient"
         else "SELECT nom_plat FROM plats ORDER BY nom_plat"
 
@@ -116,24 +118,40 @@ class AddPersonActivity : AppCompatActivity() {
         if (cursor.moveToFirst()) do { items.add(cursor.getString(0)) } while (cursor.moveToNext())
         cursor.close()
 
-        val checked = BooleanArray(items.size) { selectedList.contains(items[it]) }
+        if (items.isEmpty()) {
+            android.app.AlertDialog.Builder(this)
+                .setTitle(if (type == "ingredient") "Ingrédients" else "Plats")
+                .setMessage("Aucun élément disponible")
+                .setPositiveButton("+ Nouveau") { _, _ ->
+                    pendingContainer = containerId.toString()
+                    val intent = Intent(this, AddItemActivity::class.java)
+                    intent.putExtra("TYPE", type)
+                    startActivityForResult(intent, if (type == "ingredient") REQUEST_ADD_INGREDIENT else REQUEST_ADD_PLAT)
+                }
+                .setNegativeButton("Annuler", null)
+                .show()
+            return
+        }
 
-        val builder = android.app.AlertDialog.Builder(this)
-        builder.setTitle(if (type == "ingredient") "Ingrédients" else "Plats")
-        builder.setMultiChoiceItems(items.toTypedArray(), checked) { _, which, isChecked ->
-            if (isChecked) { if (!selectedList.contains(items[which])) selectedList.add(items[which]) }
-            else selectedList.remove(items[which])
-        }
-        builder.setPositiveButton("OK") { _, _ -> refreshCheckedView(containerId, selectedList) }
-        builder.setNeutralButton("+ Nouveau") { _, _ ->
-            // Ouvre AddItemActivity en passant le type et revient ici
-            pendingContainer = containerId.toString()
-            val intent = Intent(this, AddItemActivity::class.java)
-            intent.putExtra("TYPE", type)
-            startActivityForResult(intent, if (type == "ingredient") REQUEST_ADD_INGREDIENT else REQUEST_ADD_PLAT)
-        }
-        builder.setNegativeButton("Annuler", null)
-        builder.show()
+        SearchableMultiSelectDialog.show(
+            context = this,
+            title = if (type == "ingredient") "Ingrédients" else "Plats",
+            items = items,
+            labelOf = { it },
+            initialSelection = selectedList.toSet(),
+            neutralButtonText = "+ Nouveau",
+            onNeutral = {
+                pendingContainer = containerId.toString()
+                val intent = Intent(this, AddItemActivity::class.java)
+                intent.putExtra("TYPE", type)
+                startActivityForResult(intent, if (type == "ingredient") REQUEST_ADD_INGREDIENT else REQUEST_ADD_PLAT)
+            },
+            onConfirm = { selected ->
+                selectedList.clear()
+                selectedList.addAll(items.filter { selected.contains(it) })
+                refreshCheckedView(containerId, selectedList)
+            }
+        )
     }
 
     // Met à jour l'affichage des items cochés sous chaque section
@@ -155,9 +173,23 @@ class AddPersonActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode == RESULT_OK) {
             val containerId = pendingContainer.toIntOrNull() ?: return
+            val createdItemName = data?.getStringExtra("ITEM_NAME")?.trim().orEmpty()
             when (requestCode) {
-                REQUEST_ADD_INGREDIENT -> showPickerDialog("ingredient", if (containerId == R.id.containerLikesIngredients) likedIngredients else dislikedIngredients, containerId)
-                REQUEST_ADD_PLAT -> showPickerDialog("plat", if (containerId == R.id.containerLikesPlats) likedPlats else dislikedPlats, containerId)
+                REQUEST_ADD_INGREDIENT -> {
+                    val targetList = if (containerId == R.id.containerLikesIngredients) likedIngredients else dislikedIngredients
+                    if (createdItemName.isNotBlank() && !targetList.contains(createdItemName)) {
+                        targetList.add(createdItemName)
+                    }
+                    showPickerDialog("ingredient", targetList, containerId)
+                }
+
+                REQUEST_ADD_PLAT -> {
+                    val targetList = if (containerId == R.id.containerLikesPlats) likedPlats else dislikedPlats
+                    if (createdItemName.isNotBlank() && !targetList.contains(createdItemName)) {
+                        targetList.add(createdItemName)
+                    }
+                    showPickerDialog("plat", targetList, containerId)
+                }
             }
         }
     }

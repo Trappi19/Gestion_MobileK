@@ -7,6 +7,8 @@ import android.content.Intent
 import android.database.Cursor
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -21,6 +23,7 @@ class PersonListActivity : AppCompatActivity() {
     private var fabOpen = false
     private var selectionMode = false
     private val selectedIds = mutableSetOf<Int>()
+    private var searchQuery = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,6 +37,16 @@ class PersonListActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btnDeleteSelected).setOnClickListener {
             confirmDeleteSelected()
         }
+
+        findViewById<EditText>(R.id.etSearchPersons).addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                searchQuery = s?.toString().orEmpty().trim()
+                container.removeAllViews()
+                loadPersonsFromDb()
+            }
+            override fun afterTextChanged(s: Editable?) = Unit
+        })
 
         setupFab()
     }
@@ -161,13 +174,24 @@ class PersonListActivity : AppCompatActivity() {
     private fun loadPersonsFromDb() {
         try {
             val db = dbHelper.getDatabase()
-            val cursor: Cursor = db.rawQuery(
-                "SELECT id, nom, dernier_passage FROM personnes ORDER BY nom", null
-            )
+            val cursor: Cursor = if (searchQuery.isBlank()) {
+                db.rawQuery("SELECT id, nom, dernier_passage FROM personnes ORDER BY nom", null)
+            } else {
+                db.rawQuery(
+                    "SELECT id, nom, dernier_passage FROM personnes WHERE LOWER(nom) LIKE ? ORDER BY nom",
+                    arrayOf("%${searchQuery.lowercase()}%")
+                )
+            }
             if (cursor.moveToFirst()) {
                 do {
                     addPersonRow(cursor.getInt(0), cursor.getString(1), cursor.getString(2))
                 } while (cursor.moveToNext())
+            } else {
+                val tv = TextView(this)
+                tv.text = "Aucune personne"
+                tv.gravity = Gravity.CENTER
+                tv.setPadding(0, 24, 0, 0)
+                container.addView(tv)
             }
             cursor.close()
         } catch (e: SQLiteException) {

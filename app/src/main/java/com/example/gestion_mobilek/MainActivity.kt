@@ -56,7 +56,6 @@ class MainActivity : AppCompatActivity() {
             FutureRecettesManager.migrateDueFutureRepas(dbHelper.getDatabase())
         } catch (_: SQLiteException) {
         }
-        updateStatsFromDB()
         binding.containerLastMeals.post {
             loadLastMeals()
         }
@@ -83,40 +82,10 @@ class MainActivity : AppCompatActivity() {
     private fun dpToPx(dp: Int): Int =
         (dp * resources.displayMetrics.density).toInt()
 
-    // ─── STATS ──────────────────────────────────────────────────────
-
     private fun updateStatsFromDB() {
         try {
-            val db = dbHelper.getDatabase()
-            val dateConfig = RepasDateCompat.resolve(db)
-
-            val cp = db.rawQuery("SELECT COUNT(*) FROM plats", null)
-            cp.moveToFirst()
-            binding.tvStatsPlats.text = "Plats: ${cp.getInt(0)}"
-            cp.close()
-
-            val ch = if (dateConfig.isStorageDate) {
-                val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: ""
-                val orderExpr = RepasDateCompat.storageOrderExpr(dateConfig.columnName)
-                db.rawQuery(
-                    """SELECT COUNT(*)
-                       FROM repas
-                       WHERE ${dateConfig.columnName} IS NOT NULL
-                         AND TRIM(${dateConfig.columnName}) != ''
-                         AND $orderExpr < ?""",
-                    arrayOf(todaySortable)
-                )
-            } else {
-                db.rawQuery(
-                    "SELECT COUNT(*) FROM repas WHERE ${dateConfig.columnName} > 0",
-                    null
-                )
-            }
-            ch.moveToFirst()
-            binding.tvStatsHistorique.text = "Historique: ${ch.getInt(0)}"
-            ch.close()
-
-        } catch (e: SQLiteException) { /* silencieux */ }
+            dbHelper.getDatabase()
+        } catch (_: SQLiteException) { /* silencieux */ }
     }
 
     // ─── 3 DERNIERS REPAS ───────────────────────────────────────────

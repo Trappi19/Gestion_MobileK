@@ -15,6 +15,7 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
     private var futureId: Int = -1
+    private var futureDateColumn: String = FutureRecettesManager.NEW_DATE_COL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,6 +23,10 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
 
         dbHelper = DatabaseHelper(this)
         futureId = intent.getIntExtra("FUTURE_ID", -1)
+        try {
+            futureDateColumn = FutureRecettesManager.resolveDateColumn(dbHelper.getDatabase())
+        } catch (_: SQLiteException) {
+        }
 
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
         findViewById<ImageButton>(R.id.btnEdit).setOnClickListener {
@@ -50,8 +55,9 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
 
         try {
             val db = dbHelper.getDatabase()
+            futureDateColumn = FutureRecettesManager.resolveDateColumn(db)
             val c = db.rawQuery(
-                "SELECT nom_plat, id_personnes, date_repas, description FROM future_repas WHERE id = ?",
+                "SELECT nom_plat, id_personnes, $futureDateColumn, description FROM future_repas WHERE id = ?",
                 arrayOf(futureId.toString())
             )
 
