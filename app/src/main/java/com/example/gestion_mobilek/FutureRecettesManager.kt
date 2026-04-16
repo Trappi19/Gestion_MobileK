@@ -57,7 +57,7 @@ object FutureRecettesManager {
         val futureDateCol = resolveDateColumn(db)
 
         val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: return
-        val orderExpr = dateSortExpr(futureDateCol)
+        val orderExpr = "SUBSTR($futureDateCol, 5) || SUBSTR($futureDateCol, 3, 2) || SUBSTR($futureDateCol, 1, 2)"
 
         try {
             val dueMeals = mutableListOf<ContentValues>()
@@ -65,8 +65,9 @@ object FutureRecettesManager {
 
             val cursor = db.rawQuery(
                 """SELECT id, nom_plat, id_personnes, $futureDateCol, description
-                   FROM $FUTURE_TABLE
-                   WHERE $orderExpr < ?""",
+                   FROM future_repas
+                   WHERE $futureDateCol IS NOT NULL AND TRIM($futureDateCol) != ''
+                     AND $orderExpr < ?""",
                 arrayOf(todaySortable)
             )
 
@@ -97,6 +98,49 @@ object FutureRecettesManager {
                 }
                 dueIds.forEach { id ->
                     db.delete(FUTURE_TABLE, "id = ?", arrayOf(id.toString()))
+                }
+                // Mettre à jour dernier_passage des personnes concernées
+                dueMeals.forEach { meal ->
+                    val idPersonnagesRaw = meal.getAsString("id_personnes") ?: ""
+                    val personIds = idPersonnagesRaw.split(",").mapNotNull { it.trim().toIntOrNull() }
+                    val mealDate = meal.getAsString(repasDateConfig.columnName) ?: ""
+                    personIds.forEach { personId ->
+                        // Vérifier la date existante
+                        val personCursor = db.rawQuery(
+                            "SELECT dernier_passage FROM personnes WHERE id = ?",
+                            arrayOf(personId.toString())
+                        )
+                        var shouldUpdate = true
+                        if (personCursor.moveToFirst()) {
+                            val existingDate = personCursor.getString(0)
+                            if (!existingDate.isNullOrBlank()) {
+                                // Comparer les dates au format sortable (yyyyMMdd)
+                                val mealSort = if (repasDateConfig.isStorageDate) {
+                                    DateStorageUtils.toSortable(mealDate) ?: ""
+                                } else {
+                                    // Legacy: convertir nb_jours en date de stockage, puis en sortable
+                                    val asStorage = DateStorageUtils.normalizeStorageDate(mealDate.toIntOrNull()?.toString() ?: "")
+                                    DateStorageUtils.toSortable(asStorage) ?: ""
+                                }
+                                val existingSort = if (repasDateConfig.isStorageDate) {
+                                    DateStorageUtils.toSortable(existingDate) ?: ""
+                                } else {
+                                    val asStorage = DateStorageUtils.normalizeStorageDate(existingDate.toIntOrNull()?.toString() ?: "")
+                                    DateStorageUtils.toSortable(asStorage) ?: ""
+                                }
+                                // Ne mettre à jour que si mealDate > existingDate
+                                shouldUpdate = mealSort > existingSort
+                            }
+                        }
+                        personCursor.close()
+
+                        if (shouldUpdate) {
+                            val updateValues = ContentValues().apply {
+                                put("dernier_passage", mealDate)
+                            }
+                            db.update("personnes", updateValues, "id = ?", arrayOf(personId.toString()))
+                        }
+                    }
                 }
                 db.setTransactionSuccessful()
             } finally {

@@ -38,7 +38,15 @@
             android:textSize="22sp"
             android:textStyle="bold"/>
 
-        <View android:layout_width="48dp" android:layout_height="48dp"/>
+        <ImageButton
+            android:id="@+id/btnEditPerson"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Modifier la personne"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_edit"
+            app:tint="@android:color/white"/>
     </LinearLayout>
 
     <!-- Deux colonnes : Aime | N'aime pas -->

@@ -37,6 +37,7 @@
         <activity android:name=".FutureRecettesActivity" android:exported="false"/>
         <activity android:name=".AddEditFutureRecetteActivity" android:exported="false"/>
         <activity android:name=".FutureRecetteDetailActivity" android:exported="false"/>
+        <activity android:name=".AddHistoriqueRepasActivity" android:exported="false"/>
 
 
     </application>

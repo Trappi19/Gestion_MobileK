@@ -65,6 +65,16 @@
                 android:src="@android:drawable/ic_menu_sort_by_size"
                 app:tint="@android:color/white"/>
 
+            <ImageButton
+                android:id="@+id/btnAdd"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Ajouter un repas passé"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_input_add"
+                app:tint="@android:color/white"/>
+
         </LinearLayout>
 
         <EditText

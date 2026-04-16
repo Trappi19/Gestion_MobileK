@@ -96,8 +96,9 @@ class MainActivity : AppCompatActivity() {
             val db = dbHelper.getDatabase()
             val dateConfig = RepasDateCompat.resolve(db)
             val cursor = if (dateConfig.isStorageDate) {
-                val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: ""
-                val orderExpr = RepasDateCompat.storageOrderExpr(dateConfig.columnName)
+                val todayStorage = DateStorageUtils.todayStorageDate()
+                val todaySortable = DateStorageUtils.toSortable(todayStorage) ?: "20260416"
+                val orderExpr = "SUBSTR(${dateConfig.columnName}, 5) || SUBSTR(${dateConfig.columnName}, 3, 2) || SUBSTR(${dateConfig.columnName}, 1, 2)"
                 db.rawQuery(
                     """SELECT id, nom_plat, id_personnes, ${dateConfig.columnName}
                        FROM repas

@@ -86,16 +86,18 @@ class FutureRecettesActivity : AppCompatActivity() {
             FutureRecettesManager.ensureSchema(db)
             futureDateColumn = FutureRecettesManager.resolveDateColumn(db)
 
-            val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: ""
-            val orderExpr = "substr(printf('%08d', CAST($futureDateColumn AS INTEGER)), 5, 4) || " +
-                "substr(printf('%08d', CAST($futureDateColumn AS INTEGER)), 3, 2) || " +
-                "substr(printf('%08d', CAST($futureDateColumn AS INTEGER)), 1, 2)"
+            val todayStorage = DateStorageUtils.todayStorageDate()
+            val todaySortable = DateStorageUtils.toSortable(todayStorage) ?: "20260416"
+            
+            // Expression SQL pour convertir ddMMyyyy en yyyyMMdd
+            val orderExpr = "SUBSTR($futureDateColumn, 5) || SUBSTR($futureDateColumn, 3, 2) || SUBSTR($futureDateColumn, 1, 2)"
 
             val cursor = if (searchQuery.isBlank()) {
                 db.rawQuery(
                     """SELECT id, nom_plat, id_personnes, $futureDateColumn, description
                        FROM future_repas
-                       WHERE $orderExpr >= ?
+                       WHERE $futureDateColumn IS NOT NULL AND TRIM($futureDateColumn) != ''
+                         AND $orderExpr >= ?
                        ORDER BY $orderExpr ASC""",
                     arrayOf(todaySortable)
                 )
@@ -104,8 +106,9 @@ class FutureRecettesActivity : AppCompatActivity() {
                 db.rawQuery(
                     """SELECT id, nom_plat, id_personnes, $futureDateColumn, description
                        FROM future_repas
-                       WHERE $orderExpr >= ?
-                         AND (LOWER(nom_plat) LIKE ? OR LOWER(IFNULL(description, '')) LIKE ?)
+                       WHERE $futureDateColumn IS NOT NULL AND TRIM($futureDateColumn) != ''
+                         AND $orderExpr >= ?
+                          AND (LOWER(nom_plat) LIKE ? OR LOWER(IFNULL(description, '')) LIKE ?)
                        ORDER BY $orderExpr ASC""",
                     arrayOf(todaySortable, likeSearch, likeSearch)
                 )

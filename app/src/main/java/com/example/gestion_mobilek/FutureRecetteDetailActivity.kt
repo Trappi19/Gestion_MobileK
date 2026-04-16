@@ -1,10 +1,14 @@
 package com.example.gestion_mobilek
 
 import android.app.AlertDialog
+import android.content.ContentValues
 import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
+import android.text.InputType
+import android.view.Gravity
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -16,6 +20,7 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
     private lateinit var dbHelper: DatabaseHelper
     private var futureId: Int = -1
     private var futureDateColumn: String = FutureRecettesManager.NEW_DATE_COL
+    private var currentDescription: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +43,9 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
         findViewById<ImageButton>(R.id.btnDelete).setOnClickListener {
             if (futureId <= 0) return@setOnClickListener
             confirmDelete()
+        }
+        findViewById<TextView>(R.id.btnEditDescription).setOnClickListener {
+            showEditDescriptionDialog()
         }
     }
 
@@ -71,7 +79,7 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
             val nomPlat = c.getString(0) ?: ""
             val idPersonnes = c.getString(1) ?: ""
             val dateRepas = c.getString(2)
-            val description = c.getString(3) ?: ""
+            currentDescription = c.getString(3) ?: ""
             c.close()
 
             findViewById<TextView>(R.id.tvNomPlat).text = if (nomPlat.isBlank()) "Recette planifiée" else nomPlat
@@ -79,13 +87,62 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
             loadPersonnes(idPersonnes)
 
             val tvDesc = findViewById<TextView>(R.id.tvDescription)
-            if (description.isBlank()) {
+            if (currentDescription.isBlank()) {
                 tvDesc.text = "Aucune description"
                 tvDesc.setTextColor(0xFF888888.toInt())
             } else {
-                tvDesc.text = description
+                tvDesc.text = currentDescription
                 tvDesc.setTextColor(0xFF444444.toInt())
             }
+        } catch (e: SQLiteException) {
+            Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun showEditDescriptionDialog() {
+        if (futureId <= 0) {
+            Toast.makeText(this, "Modification indisponible", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val input = EditText(this).apply {
+            setText(currentDescription)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            minLines = 4
+            maxLines = 8
+            gravity = Gravity.TOP or Gravity.START
+            hint = "Ajouter une note utile sur cette recette"
+            setSelection(text.length)
+        }
+
+        val wrapper = LinearLayout(this).apply {
+            setPadding(48, 20, 48, 0)
+            addView(input, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Modifier la description")
+            .setView(wrapper)
+            .setPositiveButton("Enregistrer") { _, _ ->
+                saveDescription(input.text.toString().trim())
+            }
+            .setNeutralButton("Vider") { _, _ ->
+                saveDescription("")
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun saveDescription(newValue: String) {
+        try {
+            val values = ContentValues().apply { put("description", newValue) }
+            dbHelper.getDatabase().update("future_repas", values, "id = ?", arrayOf(futureId.toString()))
+            currentDescription = newValue
+            loadDetail()
+            Toast.makeText(this, "Description mise a jour", Toast.LENGTH_SHORT).show()
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
         }

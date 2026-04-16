@@ -37,6 +37,10 @@ class HistoriqueActivity : AppCompatActivity() {
             confirmDeleteSelected()
         }
 
+        findViewById<ImageButton>(R.id.btnAdd).setOnClickListener {
+            startActivity(Intent(this, AddHistoriqueRepasActivity::class.java))
+        }
+
         findViewById<EditText>(R.id.etSearchHistorique).addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -62,6 +66,7 @@ class HistoriqueActivity : AppCompatActivity() {
         selectionMode = true
         selectedIds.clear()
         findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.VISIBLE
+        findViewById<ImageButton>(R.id.btnAdd).visibility = View.GONE
         container.removeAllViews()
         loadRepas()
     }
@@ -70,6 +75,7 @@ class HistoriqueActivity : AppCompatActivity() {
         selectionMode = false
         selectedIds.clear()
         findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.GONE
+        findViewById<ImageButton>(R.id.btnAdd).visibility = View.VISIBLE
         container.removeAllViews()
         loadRepas()
     }
@@ -105,8 +111,13 @@ class HistoriqueActivity : AppCompatActivity() {
             val db = dbHelper.getDatabase()
             val dateConfig = RepasDateCompat.resolve(db)
             val cursor = if (dateConfig.isStorageDate) {
-                val todaySortable = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate()) ?: ""
-                val orderExpr = RepasDateCompat.storageOrderExpr(dateConfig.columnName)
+                // Convertir la date d'aujourd'hui au format sortable (yyyyMMdd)
+                val todayStorage = DateStorageUtils.todayStorageDate()
+                val todaySortable = DateStorageUtils.toSortable(todayStorage) ?: "20260416"
+
+                // Expression SQL pour convertir ddMMyyyy en yyyyMMdd
+                val orderExpr = "SUBSTR(${dateConfig.columnName}, 5) || SUBSTR(${dateConfig.columnName}, 3, 2) || SUBSTR(${dateConfig.columnName}, 1, 2)"
+
                 db.rawQuery(
                     """SELECT id, nom_plat, id_personnes, ${dateConfig.columnName}, description
                        FROM repas

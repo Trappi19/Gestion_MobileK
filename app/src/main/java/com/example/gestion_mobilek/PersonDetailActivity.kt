@@ -40,6 +40,12 @@ class PersonDetailActivity : AppCompatActivity() {
 
         findViewById<TextView>(R.id.tvPersonName).text = personName
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
+        findViewById<ImageButton>(R.id.btnEditPerson).setOnClickListener {
+            startActivity(Intent(this, EditPersonActivity::class.java).apply {
+                putExtra("PERSON_ID", personId)
+                putExtra("PERSON_NAME", personName)
+            })
+        }
 
         // Boutons "+" aime / n'aime pas
         findViewById<ImageButton>(R.id.btnAddLike).setOnClickListener {

@@ -20,10 +20,10 @@ class DatabaseHelper(private val context: Context) :
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {}
 
     fun getDatabase(): SQLiteDatabase {
-        // Ferme et rouvre seulement si pas encore fait dans cette session
+        // Recopy la BDD au premier acces de chaque lancement d'app
         if (dbInstance == null || !dbInstance!!.isOpen) {
             if (!copied) {
-                copyDatabaseFromAssets()  // Copie UNE SEULE fois au 1er appel
+                copyDatabaseFromAssets()
                 copied = true
             }
             val dbPath = context.getDatabasePath(DB_NAME).path
@@ -37,7 +37,12 @@ class DatabaseHelper(private val context: Context) :
     private fun copyDatabaseFromAssets() {
         val dbFile = context.getDatabasePath(DB_NAME)
         if (!dbFile.parentFile!!.exists()) dbFile.parentFile!!.mkdirs()
-        if (dbFile.exists()) return
+
+        // Ecrase la base locale a chaque lancement pour repartir de assets/bdd.db
+        if (dbFile.exists()) dbFile.delete()
+        context.getDatabasePath("$DB_NAME-wal").delete()
+        context.getDatabasePath("$DB_NAME-shm").delete()
+        context.getDatabasePath("$DB_NAME-journal").delete()
 
         try {
             context.assets.open(DB_NAME).use { input ->
