@@ -6,7 +6,11 @@ import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
 import android.text.Editable
+import android.text.SpannableString
+import android.text.Spanned
 import android.text.TextWatcher
+import android.text.style.StyleSpan
+import android.graphics.Typeface
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
@@ -313,7 +317,10 @@ class ItemListActivity : AppCompatActivity() {
 
     private fun showLongPressMenu(itemName: String, anchor: View) {
         val popup = PopupMenu(this, anchor)
-        popup.menu.add(0, 0, 0, itemName).apply { isEnabled = false }
+        val title = SpannableString(itemName).apply {
+            setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        popup.menu.add(0, 0, 0, title).apply { isEnabled = false }
         popup.menu.add(0, 1, 1, "Modifier")
         popup.menu.add(0, 2, 2, "Supprimer")
 

@@ -6,9 +6,13 @@ import android.app.AlertDialog
 import android.content.Intent
 import android.database.Cursor
 import android.database.sqlite.SQLiteException
+import android.graphics.Typeface
 import android.os.Bundle
 import android.text.Editable
+import android.text.SpannableString
+import android.text.Spanned
 import android.text.TextWatcher
+import android.text.style.StyleSpan
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -18,10 +22,16 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class PersonListActivity : AppCompatActivity() {
 
+    private enum class SelectionMode {
+        NONE,
+        DELETE,
+        GROUP
+    }
+
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var container: LinearLayout
     private var fabOpen = false
-    private var selectionMode = false
+    private var selectionMode = SelectionMode.NONE
     private val selectedIds = mutableSetOf<Int>()
     private var searchQuery = ""
 
@@ -38,6 +48,10 @@ class PersonListActivity : AppCompatActivity() {
             confirmDeleteSelected()
         }
 
+        findViewById<ImageButton>(R.id.btnSelectionActions).setOnClickListener {
+            showGroupActionsMenu(it)
+        }
+
         findViewById<EditText>(R.id.etSearchPersons).addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -49,6 +63,7 @@ class PersonListActivity : AppCompatActivity() {
         })
 
         setupFab()
+        updateHeaderForSelectionMode()
     }
 
     override fun onResume() {
@@ -64,6 +79,7 @@ class PersonListActivity : AppCompatActivity() {
         val fabMain = findViewById<FloatingActionButton>(R.id.fabMain)
         val fabAdd = findViewById<FloatingActionButton>(R.id.fabAdd)
         val fabDelete = findViewById<FloatingActionButton>(R.id.fabDelete)
+        val fabSelectGroup = findViewById<FloatingActionButton>(R.id.fabSelectGroup)
 
         fabMain.setOnClickListener {
             if (fabOpen) closeFab() else openFab()
@@ -76,7 +92,12 @@ class PersonListActivity : AppCompatActivity() {
 
         fabDelete.setOnClickListener {
             closeFab()
-            enterSelectionMode()
+            enterDeleteSelectionMode()
+        }
+
+        fabSelectGroup.setOnClickListener {
+            closeFab()
+            enterGroupSelectionMode()
         }
     }
 
@@ -84,8 +105,9 @@ class PersonListActivity : AppCompatActivity() {
         fabOpen = true
         val fabAdd = findViewById<FloatingActionButton>(R.id.fabAdd)
         val fabDelete = findViewById<FloatingActionButton>(R.id.fabDelete)
+        val fabSelectGroup = findViewById<FloatingActionButton>(R.id.fabSelectGroup)
 
-        listOf(fabAdd, fabDelete).forEachIndexed { index, fab ->
+        listOf(fabAdd, fabDelete, fabSelectGroup).forEachIndexed { index, fab ->
             fab.visibility = View.VISIBLE
             fab.alpha = 0f
             fab.scaleX = 0f
@@ -108,8 +130,9 @@ class PersonListActivity : AppCompatActivity() {
         fabOpen = false
         val fabAdd = findViewById<FloatingActionButton>(R.id.fabAdd)
         val fabDelete = findViewById<FloatingActionButton>(R.id.fabDelete)
+        val fabSelectGroup = findViewById<FloatingActionButton>(R.id.fabSelectGroup)
 
-        listOf(fabAdd, fabDelete).forEach { fab ->
+        listOf(fabAdd, fabDelete, fabSelectGroup).forEach { fab ->
             AnimatorSet().apply {
                 playTogether(
                     ObjectAnimator.ofFloat(fab, "alpha", 1f, 0f),
@@ -125,31 +148,94 @@ class PersonListActivity : AppCompatActivity() {
 
     // ─── MODE SÉLECTION ─────────────────────────────────────────────────────
 
-    private fun enterSelectionMode() {
-        selectionMode = true
+    private fun enterDeleteSelectionMode(initialSelectedPersonId: Int? = null) {
+        selectionMode = SelectionMode.DELETE
         selectedIds.clear()
-        findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.VISIBLE
-        findViewById<View>(R.id.spacerHeader).visibility = View.GONE
-        // Recharge avec coches
+        initialSelectedPersonId?.let { selectedIds.add(it) }
+        updateHeaderForSelectionMode()
+        container.removeAllViews()
+        loadPersonsFromDb()
+    }
+
+    private fun enterGroupSelectionMode(initialSelectedPersonId: Int? = null) {
+        selectionMode = SelectionMode.GROUP
+        selectedIds.clear()
+        initialSelectedPersonId?.let { selectedIds.add(it) }
+        updateHeaderForSelectionMode()
         container.removeAllViews()
         loadPersonsFromDb()
     }
 
     private fun exitSelectionMode() {
-        selectionMode = false
+        selectionMode = SelectionMode.NONE
         selectedIds.clear()
-        findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.GONE
-        findViewById<View>(R.id.spacerHeader).visibility = View.VISIBLE
+        updateHeaderForSelectionMode()
+    }
+
+    private fun updateHeaderForSelectionMode() {
+        val btnDelete = findViewById<ImageButton>(R.id.btnDeleteSelected)
+        val btnGroupActions = findViewById<ImageButton>(R.id.btnSelectionActions)
+        val spacer = findViewById<View>(R.id.spacerHeader)
+
+        btnDelete.visibility = if (selectionMode == SelectionMode.DELETE) View.VISIBLE else View.GONE
+        btnGroupActions.visibility = if (selectionMode == SelectionMode.GROUP) View.VISIBLE else View.GONE
+        spacer.visibility = if (selectionMode == SelectionMode.NONE) View.VISIBLE else View.GONE
+    }
+
+    private fun isAnySelectionMode(): Boolean = selectionMode != SelectionMode.NONE
+
+    private fun showGroupActionsMenu(anchor: View) {
+        if (selectionMode != SelectionMode.GROUP) return
+        if (selectedIds.isEmpty()) {
+            Toast.makeText(this, "Selectionnez au moins une personne", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val popup = PopupMenu(this, anchor)
+        popup.menu.add(0, 1, 1, "Ajouter a une future recette")
+        popup.menu.add(0, 2, 2, "Voir les gouts ensembles")
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                1 -> openAddFutureRecipeWithSelection()
+                2 -> openGroupTastePage()
+            }
+            true
+        }
+        popup.show()
+    }
+
+    private fun openAddFutureRecipeWithSelection() {
+        if (selectedIds.isEmpty()) {
+            Toast.makeText(this, "Selectionnez au moins une personne", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startActivity(Intent(this, AddEditFutureRecetteActivity::class.java).apply {
+            putExtra("PRESELECTED_PERSON_IDS", selectedIds.toIntArray())
+        })
+    }
+
+    private fun openGroupTastePage() {
+        if (selectedIds.isEmpty()) {
+            Toast.makeText(this, "Selectionnez au moins une personne", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startActivity(Intent(this, PersonGroupTasteActivity::class.java).apply {
+            putExtra("SELECTED_PERSON_IDS", selectedIds.toIntArray())
+        })
     }
 
     private fun confirmDeleteSelected() {
+        if (selectionMode != SelectionMode.DELETE) {
+            Toast.makeText(this, "Mode suppression non actif", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (selectedIds.isEmpty()) {
-            Toast.makeText(this, "Aucune personne sélectionnée", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Aucune personne selectionnee", Toast.LENGTH_SHORT).show()
             return
         }
         AlertDialog.Builder(this)
             .setTitle("Supprimer ${selectedIds.size} personne(s) ?")
-            .setMessage("Cette action est irréversible.")
+            .setMessage("Cette action est irreversible.")
             .setPositiveButton("Supprimer") { _, _ ->
                 try {
                     val db = dbHelper.getDatabase()
@@ -157,7 +243,7 @@ class PersonListActivity : AppCompatActivity() {
                         db.delete("personnes", "id = ?", arrayOf(id.toString()))
                         db.delete("gouts", "id_personne = ?", arrayOf(id.toString()))
                     }
-                    Toast.makeText(this, "${selectedIds.size} personne(s) supprimée(s)", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "${selectedIds.size} personne(s) supprimee(s)", Toast.LENGTH_SHORT).show()
                     exitSelectionMode()
                     container.removeAllViews()
                     loadPersonsFromDb()
@@ -209,19 +295,17 @@ class PersonListActivity : AppCompatActivity() {
         ).apply { topMargin = 8; bottomMargin = 8 }
         row.gravity = Gravity.CENTER_VERTICAL
 
-        // Coche (visible seulement en mode sélection)
         val checkBox = CheckBox(this)
         checkBox.layoutParams = LinearLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         )
-        checkBox.visibility = if (selectionMode) View.VISIBLE else View.GONE
+        checkBox.visibility = if (isAnySelectionMode()) View.VISIBLE else View.GONE
         checkBox.isChecked = selectedIds.contains(personId)
         checkBox.setOnCheckedChangeListener { _, checked ->
             if (checked) selectedIds.add(personId) else selectedIds.remove(personId)
         }
 
-        // Bouton personne
         val btn = Button(this)
         btn.layoutParams = LinearLayout.LayoutParams(
             0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
@@ -229,7 +313,7 @@ class PersonListActivity : AppCompatActivity() {
         btn.text = "$name     |     $dateStr"
 
         btn.setOnClickListener {
-            if (selectionMode) {
+            if (isAnySelectionMode()) {
                 checkBox.isChecked = !checkBox.isChecked
             } else {
                 startActivity(Intent(this, PersonDetailActivity::class.java).apply {
@@ -240,7 +324,7 @@ class PersonListActivity : AppCompatActivity() {
         }
 
         btn.setOnLongClickListener {
-            if (!selectionMode) showLongPressMenu(personId, name, btn)
+            if (!isAnySelectionMode()) showLongPressMenu(personId, name, btn)
             true
         }
 
@@ -254,10 +338,13 @@ class PersonListActivity : AppCompatActivity() {
     private fun showLongPressMenu(personId: Int, name: String, anchor: View) {
         val popup = PopupMenu(this, anchor, Gravity.START)
 
-        // Nom en "titre" désactivé en haut
-        popup.menu.add(0, 0, 0, name).apply { isEnabled = false }
-        popup.menu.add(0, 1, 1, "✏️  Modifier")
-        popup.menu.add(0, 2, 2, "🗑️  Supprimer")
+        val title = SpannableString(name).apply {
+            setSpan(StyleSpan(Typeface.BOLD), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        popup.menu.add(0, 0, 0, title).apply { isEnabled = false }
+        popup.menu.add(0, 1, 1, "Modifier")
+        popup.menu.add(0, 2, 2, "Supprimer")
+        popup.menu.add(0, 3, 3, "Selectionner")
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -269,6 +356,7 @@ class PersonListActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
                 2 -> confirmDeleteOne(personId, name)
+                3 -> enterGroupSelectionMode(personId)
             }
             true
         }
@@ -278,13 +366,13 @@ class PersonListActivity : AppCompatActivity() {
     private fun confirmDeleteOne(personId: Int, name: String) {
         AlertDialog.Builder(this)
             .setTitle("Supprimer $name ?")
-            .setMessage("Cette action est irréversible.")
+            .setMessage("Cette action est irreversible.")
             .setPositiveButton("Supprimer") { _, _ ->
                 try {
                     val db = dbHelper.getDatabase()
                     db.delete("personnes", "id = ?", arrayOf(personId.toString()))
                     db.delete("gouts", "id_personne = ?", arrayOf(personId.toString()))
-                    Toast.makeText(this, "$name supprimé", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "$name supprime", Toast.LENGTH_SHORT).show()
                     container.removeAllViews()
                     loadPersonsFromDb()
                 } catch (e: SQLiteException) {

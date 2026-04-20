@@ -54,7 +54,7 @@ class HistoriqueActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         try {
-            FutureRecettesManager.migrateDueFutureRepas(dbHelper.getDatabase())
+            FutureRecettesManager.migrateDueFutureRepas(this, dbHelper.getDatabase())
         } catch (_: SQLiteException) {
         }
         exitSelectionMode()

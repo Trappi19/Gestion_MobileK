@@ -1,5 +1,6 @@
 package com.example.gestion_mobilek
 
+import android.content.Context
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
@@ -28,6 +29,7 @@ object FutureRecettesManager {
             )
             """.trimIndent()
         )
+        FutureReminderStore.ensureSchema(db)
     }
 
     fun resolveDateColumn(db: SQLiteDatabase): String {
@@ -51,7 +53,7 @@ object FutureRecettesManager {
         }
     }
 
-    fun migrateDueFutureRepas(db: SQLiteDatabase) {
+    fun migrateDueFutureRepas(context: Context, db: SQLiteDatabase) {
         ensureSchema(db)
         val repasDateConfig = RepasDateCompat.resolve(db)
         val futureDateCol = resolveDateColumn(db)
@@ -90,6 +92,10 @@ object FutureRecettesManager {
             cursor.close()
 
             if (dueIds.isEmpty()) return
+
+            dueIds.forEach { futureId ->
+                FutureReminderScheduler.cancelFutureReminders(context, futureId, deleteRows = true)
+            }
 
             db.beginTransaction()
             try {

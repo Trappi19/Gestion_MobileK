@@ -131,6 +131,50 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
+                    android:text="@string/future_reminders_title"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+
+                <CheckBox
+                    android:id="@+id/cbEnableReminders"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/future_reminders_enable"/>
+
+                <LinearLayout
+                    android:id="@+id/layoutReminderSection"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/future_reminders_help"
+                        android:textColor="#666666"/>
+
+                    <LinearLayout
+                        android:id="@+id/containerReminders"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingBottom="8dp"/>
+
+                    <Button
+                        android:id="@+id/btnAddReminder"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/future_reminders_add"/>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
                     android:text="Description (optionnelle)"
                     android:textSize="16sp"
                     android:textStyle="bold"/>

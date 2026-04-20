@@ -39,6 +39,16 @@
             android:textStyle="bold"/>
 
         <ImageButton
+            android:id="@+id/btnPersonMeals"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Historique des repas"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_recent_history"
+            app:tint="@android:color/white"/>
+
+        <ImageButton
             android:id="@+id/btnEditPerson"
             android:layout_width="48dp"
             android:layout_height="48dp"

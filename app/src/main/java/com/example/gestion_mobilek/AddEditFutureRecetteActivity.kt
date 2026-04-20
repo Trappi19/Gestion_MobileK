@@ -1,18 +1,24 @@
 package com.example.gestion_mobilek
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.ContentValues
 import android.content.Intent
 import android.database.sqlite.SQLiteException
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class AddEditFutureRecetteActivity : AppCompatActivity() {
 
     private data class PersonOption(val id: Int, val name: String)
+    private data class ReminderDraft(val triggerAtMillis: Long)
 
     private lateinit var dbHelper: DatabaseHelper
     private var futureId: Int = -1
@@ -20,6 +26,8 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
     private var futureDateColumn: String = "date_dernier_repas"
     private val selectedPersonIds = mutableSetOf<Int>()
     private val selectedPlats = mutableSetOf<String>()
+    private val reminderDrafts = mutableListOf<ReminderDraft>()
+    private var remindersEnabled = false
 
     companion object {
         private const val REQUEST_ADD_PERSON = 3001
@@ -37,11 +45,13 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
             val db = dbHelper.getDatabase()
             FutureRecettesManager.ensureSchema(db)
             futureDateColumn = resolveFutureDateColumn(db)
+            FutureReminderStore.ensureSchema(db)
         } catch (_: SQLiteException) {
         }
 
         val tvTitle = findViewById<TextView>(R.id.tvTitleFuture)
         val tvDate = findViewById<TextView>(R.id.tvSelectedDate)
+        val cbReminders = findViewById<CheckBox>(R.id.cbEnableReminders)
 
         findViewById<ImageButton>(R.id.btnBackAdd).setOnClickListener { finish() }
 
@@ -49,7 +59,28 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
             tvTitle.text = "Modifier recette planifiée"
             findViewById<Button>(R.id.btnConfirmFuture).text = "Sauvegarder"
             loadExistingData(tvDate)
+            loadExistingReminders()
+        } else {
+            val preselectedIds = intent.getIntArrayExtra("PRESELECTED_PERSON_IDS")
+                ?.filter { it > 0 }
+                .orEmpty()
+            if (preselectedIds.isNotEmpty()) {
+                selectedPersonIds.clear()
+                selectedPersonIds.addAll(preselectedIds)
+                refreshPersonsView()
+            }
         }
+
+        cbReminders.setOnCheckedChangeListener { _, checked ->
+            remindersEnabled = checked
+            updateReminderSectionVisibility()
+        }
+
+        findViewById<Button>(R.id.btnAddReminder).setOnClickListener {
+            showReminderPicker()
+        }
+
+        updateReminderSectionVisibility()
 
         findViewById<Button>(R.id.btnPickDate).setOnClickListener {
             showDatePicker(tvDate)
@@ -98,6 +129,22 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
         }
     }
 
+    private fun loadExistingReminders() {
+        try {
+            val db = dbHelper.getDatabase()
+            reminderDrafts.clear()
+            reminderDrafts.addAll(
+                FutureReminderStore.loadForFuture(db, futureId)
+                    .map { ReminderDraft(it.triggerAtMillis) }
+            )
+            remindersEnabled = reminderDrafts.isNotEmpty()
+            findViewById<CheckBox>(R.id.cbEnableReminders).isChecked = remindersEnabled
+            updateReminderSectionVisibility()
+            refreshRemindersView()
+        } catch (_: SQLiteException) {
+        }
+    }
+
     private fun showDatePicker(tvDate: TextView) {
         val initial = Calendar.getInstance()
         selectedDateStorage?.let { raw ->
@@ -120,6 +167,118 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
             initial.get(Calendar.MONTH),
             initial.get(Calendar.DAY_OF_MONTH)
         ).show()
+    }
+
+    private fun showReminderPicker() {
+        val now = Calendar.getInstance()
+        val initial = Calendar.getInstance()
+
+        selectedDateStorage?.let { raw ->
+            val normalized = DateStorageUtils.normalizeStorageDate(raw)
+            if (!normalized.isNullOrBlank()) {
+                val day = normalized.substring(0, 2).toIntOrNull() ?: now.get(Calendar.DAY_OF_MONTH)
+                val month = (normalized.substring(2, 4).toIntOrNull() ?: (now.get(Calendar.MONTH) + 1)) - 1
+                val year = normalized.substring(4, 8).toIntOrNull() ?: now.get(Calendar.YEAR)
+                initial.set(year, month, day)
+            }
+        }
+
+        DatePickerDialog(
+            this,
+            { _, y, m, d ->
+                val timeSeed = Calendar.getInstance()
+                TimePickerDialog(
+                    this,
+                    { _, hour, minute ->
+                        val picked = Calendar.getInstance().apply {
+                            set(Calendar.YEAR, y)
+                            set(Calendar.MONTH, m)
+                            set(Calendar.DAY_OF_MONTH, d)
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                            set(Calendar.SECOND, 0)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        val pickedMillis = picked.timeInMillis
+                        if (pickedMillis <= System.currentTimeMillis()) {
+                            Toast.makeText(this, "Choisissez une date/heure future", Toast.LENGTH_SHORT).show()
+                            return@TimePickerDialog
+                        }
+                        remindersEnabled = true
+                        findViewById<CheckBox>(R.id.cbEnableReminders).isChecked = true
+                        addReminderDraft(pickedMillis)
+                    },
+                    timeSeed.get(Calendar.HOUR_OF_DAY),
+                    timeSeed.get(Calendar.MINUTE),
+                    true
+                ).show()
+            },
+            initial.get(Calendar.YEAR),
+            initial.get(Calendar.MONTH),
+            initial.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    private fun addReminderDraft(triggerAtMillis: Long) {
+        if (reminderDrafts.any { it.triggerAtMillis == triggerAtMillis }) {
+            Toast.makeText(this, "Ce rappel existe déjà", Toast.LENGTH_SHORT).show()
+            return
+        }
+        reminderDrafts.add(ReminderDraft(triggerAtMillis))
+        reminderDrafts.sortBy { it.triggerAtMillis }
+        remindersEnabled = true
+        updateReminderSectionVisibility()
+        refreshRemindersView()
+    }
+
+    private fun updateReminderSectionVisibility() {
+        findViewById<View>(R.id.layoutReminderSection).visibility = if (remindersEnabled) View.VISIBLE else View.GONE
+        findViewById<CheckBox>(R.id.cbEnableReminders).isChecked = remindersEnabled
+    }
+
+    private fun refreshRemindersView() {
+        val container = findViewById<LinearLayout>(R.id.containerReminders)
+        container.removeAllViews()
+
+        if (reminderDrafts.isEmpty()) {
+            val tv = TextView(this)
+            tv.text = getString(R.string.future_reminders_empty)
+            tv.setTextColor(0xFF888888.toInt())
+            container.addView(tv)
+            return
+        }
+
+        val formatter = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+        reminderDrafts.forEachIndexed { index, reminder ->
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = 6 }
+                gravity = android.view.Gravity.CENTER_VERTICAL
+            }
+
+            val tv = TextView(this).apply {
+                text = formatter.format(Date(reminder.triggerAtMillis))
+                layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+            }
+
+            val btnRemove = ImageButton(this).apply {
+                layoutParams = LinearLayout.LayoutParams(48, 48)
+                setBackgroundResource(android.R.color.transparent)
+                setImageResource(android.R.drawable.ic_menu_delete)
+                contentDescription = getString(R.string.future_reminders_remove)
+                setOnClickListener {
+                    reminderDrafts.removeAt(index)
+                    refreshRemindersView()
+                }
+            }
+
+            row.addView(tv)
+            row.addView(btnRemove)
+            container.addView(row)
+        }
     }
 
     private fun showPersonsPicker() {
@@ -282,6 +441,10 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
             Toast.makeText(this, "Sélectionnez au moins un plat", Toast.LENGTH_SHORT).show()
             return
         }
+        if (remindersEnabled && reminderDrafts.isEmpty()) {
+            Toast.makeText(this, "Ajoutez au moins un rappel ou désactivez-les", Toast.LENGTH_SHORT).show()
+            return
+        }
 
         val dateSort = DateStorageUtils.toSortable(dateStorage)
         val todaySort = DateStorageUtils.toSortable(DateStorageUtils.todayStorageDate())
@@ -292,21 +455,43 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
 
         try {
             val db = dbHelper.getDatabase()
-            val values = ContentValues().apply {
-                put("nom_plat", selectedPlats.joinToString(","))
-                put("id_personnes", selectedPersonIds.joinToString(","))
-                put(futureDateColumn, dateStorage)
-                put("description", description)
+            val isUpdate = futureId > 0
+            if (isUpdate) {
+                FutureReminderScheduler.cancelFutureReminders(this, futureId, deleteRows = false)
+            }
+            db.beginTransaction()
+            val savedFutureId: Int
+            try {
+                val values = ContentValues().apply {
+                    put("nom_plat", selectedPlats.joinToString(","))
+                    put("id_personnes", selectedPersonIds.joinToString(","))
+                    put(futureDateColumn, dateStorage)
+                    put("description", description)
+                }
+
+                savedFutureId = if (futureId > 0) {
+                    db.update("future_repas", values, "id = ?", arrayOf(futureId.toString()))
+                    futureId
+                } else {
+                    val newId = db.insert("future_repas", null, values)
+                    if (newId <= 0) throw SQLiteException("Impossible de créer la future recette")
+                    futureId = newId.toInt()
+                    futureId
+                }
+
+                if (remindersEnabled) {
+                    FutureReminderStore.replaceForFuture(db, savedFutureId, reminderDrafts.map { it.triggerAtMillis })
+                } else {
+                    FutureReminderStore.deleteForFuture(db, savedFutureId)
+                }
+
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
             }
 
-            if (futureId > 0) {
-                db.update("future_repas", values, "id = ?", arrayOf(futureId.toString()))
-                Toast.makeText(this, "Recette mise à jour", Toast.LENGTH_SHORT).show()
-            } else {
-                db.insert("future_repas", null, values)
-                Toast.makeText(this, "Recette planifiée", Toast.LENGTH_SHORT).show()
-            }
-
+            FutureReminderScheduler.scheduleForFuture(this, savedFutureId)
+            Toast.makeText(this, if (isUpdate) "Recette mise à jour" else "Recette planifiée", Toast.LENGTH_SHORT).show()
             finish()
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()

@@ -55,6 +55,17 @@
                 android:visibility="gone"
                 app:tint="@android:color/white"/>
 
+            <ImageButton
+                android:id="@+id/btnSelectionActions"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Actions de sélection"
+                android:scaleType="centerInside"
+                android:src="@android:drawable/ic_menu_more"
+                android:visibility="gone"
+                app:tint="@android:color/white"/>
+
             <!-- Espace équilibre quand poubelle cachée -->
             <View
                 android:id="@+id/spacerHeader"
@@ -121,6 +132,20 @@
         android:visibility="gone"
         app:fabSize="mini"
         app:backgroundTint="#F44336"
+        app:tint="@android:color/white"/>
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabSelectGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="90dp"
+        android:layout_marginBottom="90dp"
+        android:contentDescription="Sélectionner des personnes"
+        android:src="@android:drawable/ic_menu_sort_by_size"
+        android:visibility="gone"
+        app:fabSize="mini"
+        app:backgroundTint="#4A90E2"
         app:tint="@android:color/white"/>
 
     <!-- FAB principal dans le coin -->

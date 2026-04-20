@@ -2,6 +2,7 @@ package com.example.gestion_mobilek
 
 import android.content.Intent
 import android.database.sqlite.SQLiteException
+import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
 import android.widget.*
@@ -21,6 +22,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 4201)
+        }
 
         dbHelper = DatabaseHelper(this)
 
@@ -46,14 +51,39 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, HistoriqueActivity::class.java))
         }
         binding.btnMenu.setOnClickListener {
-            Toast.makeText(this, "Menu à implémenter", Toast.LENGTH_SHORT).show()
+            PopupMenu(this, binding.btnMenu).apply {
+                this@MainActivity.menuInflater.inflate(R.menu.main_activity_menu, menu)
+                setOnMenuItemClickListener { item ->
+                    when (item.itemId) {
+                        R.id.action_settings -> {
+                            startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                            true
+                        }
+                        R.id.action_license -> {
+                            startActivity(Intent(this@MainActivity, SettingsActivity::class.java).apply {
+                                putExtra("OPEN_LICENSE", true)
+                            })
+                            true
+                        }
+                        R.id.action_about -> {
+                            startActivity(Intent(this@MainActivity, SettingsActivity::class.java).apply {
+                                putExtra("OPEN_ABOUT", true)
+                            })
+                            true
+                        }
+                        else -> false
+                    }
+                }
+                show()
+            }
         }
     }
 
     override fun onResume() {
         super.onResume()
         try {
-            FutureRecettesManager.migrateDueFutureRepas(dbHelper.getDatabase())
+            FutureRecettesManager.migrateDueFutureRepas(this, dbHelper.getDatabase())
+            FutureReminderScheduler.rescheduleAll(this)
         } catch (_: SQLiteException) {
         }
         binding.containerLastMeals.post {

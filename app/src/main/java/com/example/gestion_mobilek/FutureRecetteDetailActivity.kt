@@ -198,6 +198,7 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
             .setMessage("Cette action est irréversible.")
             .setPositiveButton("Supprimer") { _, _ ->
                 try {
+                    FutureReminderScheduler.cancelFutureReminders(this@FutureRecetteDetailActivity, futureId, deleteRows = true)
                     dbHelper.getDatabase().delete("future_repas", "id = ?", arrayOf(futureId.toString()))
                     Toast.makeText(this, "Recette supprimée", Toast.LENGTH_SHORT).show()
                     finish()

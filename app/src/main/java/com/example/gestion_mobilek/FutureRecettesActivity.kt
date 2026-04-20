@@ -56,7 +56,8 @@ class FutureRecettesActivity : AppCompatActivity() {
             val db = dbHelper.getDatabase()
             FutureRecettesManager.ensureSchema(db)
             futureDateColumn = FutureRecettesManager.resolveDateColumn(db)
-            FutureRecettesManager.migrateDueFutureRepas(db)
+            FutureRecettesManager.migrateDueFutureRepas(this, db)
+            FutureReminderScheduler.rescheduleAll(this)
         } catch (_: SQLiteException) {
         }
         exitSelectionMode()
@@ -244,6 +245,7 @@ class FutureRecettesActivity : AppCompatActivity() {
             .setMessage("Cette action est irréversible.")
             .setPositiveButton("Supprimer") { _, _ ->
                 try {
+                    FutureReminderScheduler.cancelFutureReminders(this@FutureRecettesActivity, futureId, deleteRows = true)
                     dbHelper.getDatabase().delete("future_repas", "id = ?", arrayOf(futureId.toString()))
                     container.removeAllViews()
                     loadFutureRepas()
@@ -267,6 +269,7 @@ class FutureRecettesActivity : AppCompatActivity() {
                 try {
                     val db = dbHelper.getDatabase()
                     selectedIds.forEach { id ->
+                        FutureReminderScheduler.cancelFutureReminders(this@FutureRecettesActivity, id, deleteRows = true)
                         db.delete("future_repas", "id = ?", arrayOf(id.toString()))
                     }
                     Toast.makeText(this, "${selectedIds.size} recette(s) supprimée(s)", Toast.LENGTH_SHORT).show()

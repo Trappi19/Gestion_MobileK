@@ -46,6 +46,12 @@ class PersonDetailActivity : AppCompatActivity() {
                 putExtra("PERSON_NAME", personName)
             })
         }
+        findViewById<ImageButton>(R.id.btnPersonMeals).setOnClickListener {
+            startActivity(Intent(this, PersonMealsHistoryActivity::class.java).apply {
+                putExtra("PERSON_ID", personId)
+                putExtra("PERSON_NAME", personName)
+            })
+        }
 
         // Boutons "+" aime / n'aime pas
         findViewById<ImageButton>(R.id.btnAddLike).setOnClickListener {
