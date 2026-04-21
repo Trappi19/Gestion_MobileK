@@ -64,6 +64,7 @@
     <string name="settings_data_source_external">base externe</string>
     <string name="settings_remote_database">Base distante : %1$s</string>
     <string name="settings_remote_database_unknown">non connectée</string>
+    <string name="settings_online_diagnostic">Diagnostic online</string>
     <string name="settings_resync_reminders">Resynchroniser les rappels</string>
     <string name="settings_reminders_resynced">Rappels resynchronisés</string>
     <string name="settings_about_title">À propos</string>
@@ -71,4 +72,21 @@
     <string name="settings_about_dialog_text">Gestion_MobileK\nVersion %1$s (%2$d)\n\nApplication de gestion de personnes, goûts, historiques et rappels de recettes.</string>
     <string name="settings_license">Licence</string>
     <string name="settings_license_text">Projet personnel. Les bibliothèques AndroidX et Material utilisées par cette application restent soumises à leurs licences respectives. @SevanAndCO.</string>
+    <string name="online_diagnostic_title">Diagnostic online</string>
+    <string name="online_diagnostic_refresh">Rafraîchir</string>
+    <string name="online_diagnostic_loading">Diagnostic en cours...</string>
+    <string name="online_diagnostic_ready">Diagnostic prêt</string>
+    <string name="online_diagnostic_error">Erreur de diagnostic</string>
+    <string name="online_diagnostic_error_unknown">Impossible de lancer le diagnostic.</string>
+    <string name="online_diagnostic_host">Hôte : %1$s:%2$d</string>
+    <string name="online_diagnostic_database">Base résolue : %1$s</string>
+    <string name="online_diagnostic_configured_database">Base forcée : %1$s</string>
+    <string name="online_diagnostic_none">aucun</string>
+    <string name="online_diagnostic_table_title">Table locale : %1$s | distante : %2$s</string>
+    <string name="online_diagnostic_table_missing">introuvable</string>
+    <string name="online_diagnostic_columns_local">Colonnes locales : %1$s</string>
+    <string name="online_diagnostic_columns_remote">Colonnes distantes : %1$s</string>
+    <string name="online_diagnostic_columns_mapped">Colonnes mappées : %1$s</string>
+    <string name="online_diagnostic_columns_ignored_local">Colonnes locales ignorées : %1$s</string>
+    <string name="online_diagnostic_columns_ignored_remote">Colonnes distantes ignorées : %1$s</string>
 </resources>

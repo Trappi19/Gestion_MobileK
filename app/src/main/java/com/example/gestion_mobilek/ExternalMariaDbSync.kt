@@ -13,6 +13,30 @@ import java.sql.SQLException
 
 object ExternalMariaDbSync {
 
+    data class ColumnMapping(
+        val localColumn: String,
+        val remoteColumn: String
+    )
+
+    data class TableDiagnostic(
+        val localTable: String,
+        val remoteTable: String?,
+        val localColumns: List<String>,
+        val remoteColumns: List<String>,
+        val mappedColumns: List<ColumnMapping>,
+        val ignoredLocalColumns: List<String>,
+        val ignoredRemoteColumns: List<String>
+    )
+
+    data class OnlineDiagnosticReport(
+        val host: String,
+        val port: Int,
+        val configuredDatabase: String?,
+        val resolvedDatabase: String,
+        val tables: List<TableDiagnostic>,
+        val notes: List<String>
+    )
+
     private data class MariaDbConfig(
         val host: String,
         val port: Int,
@@ -160,6 +184,87 @@ object ExternalMariaDbSync {
         if (localColumns.contains(remoteColumn)) return remoteColumn
         val normalized = normalizeTableName(remoteColumn)
         return localColumns.firstOrNull { normalizeTableName(it).equals(normalized, ignoreCase = true) }
+    }
+
+    private fun mapTableDiagnostic(
+        sqliteDb: SQLiteDatabase,
+        remoteConn: Connection,
+        databaseName: String,
+        localTable: String,
+        remoteTable: String?
+    ): TableDiagnostic {
+        val localColumns = sqliteTableColumns(sqliteDb, localTable)
+        val remoteColumns = if (remoteTable != null) {
+            remoteTableColumns(remoteConn, databaseName, remoteTable).toList()
+        } else {
+            emptyList()
+        }
+
+        val mappedColumns = if (remoteTable != null) {
+            localColumns.mapNotNull { localColumn ->
+                resolveRemoteColumnName(localColumn, remoteColumns.toSet())?.let { remoteColumn ->
+                    ColumnMapping(localColumn, remoteColumn)
+                }
+            }
+        } else {
+            emptyList()
+        }
+
+        val ignoredLocalColumns = localColumns.filter { localColumn ->
+            mappedColumns.none { it.localColumn == localColumn }
+        }
+        val ignoredRemoteColumns = remoteColumns.filter { remoteColumn ->
+            mappedColumns.none { it.remoteColumn == remoteColumn }
+        }
+
+        return TableDiagnostic(
+            localTable = localTable,
+            remoteTable = remoteTable,
+            localColumns = localColumns,
+            remoteColumns = remoteColumns,
+            mappedColumns = mappedColumns,
+            ignoredLocalColumns = ignoredLocalColumns,
+            ignoredRemoteColumns = ignoredRemoteColumns
+        )
+    }
+
+    fun buildOnlineDiagnostic(context: Context): Result<OnlineDiagnosticReport> {
+        return runCatching {
+            val config = resolveConfig()
+            openServerConnection(config).use { serverConn ->
+                val resolvedDatabase = resolveDatabaseName(context, config, serverConn)
+                openDatabaseConnection(config, resolvedDatabase).use { dbConn ->
+                    val sqliteDb = DatabaseHelper(context).getDatabaseForMode(useExternal = true)
+                    FutureRecettesManager.ensureSchema(sqliteDb)
+
+                    val remoteNames = remoteTableNames(dbConn, resolvedDatabase)
+                    val notes = mutableListOf<String>()
+                    if (config.forcedDatabase != null) {
+                        notes.add("Base forcee via .env : ${config.forcedDatabase}")
+                    } else {
+                        notes.add("Base distante detectee automatiquement : $resolvedDatabase")
+                    }
+
+                    val tables = syncTables.map { localTable ->
+                        val remoteTable = resolveRemoteTableName(localTable, remoteNames)
+                        mapTableDiagnostic(sqliteDb, dbConn, resolvedDatabase, localTable, remoteTable)
+                    }
+
+                    if (tables.none { it.remoteTable != null }) {
+                        notes.add("Aucune table mappable detectee dans la base distante.")
+                    }
+
+                    OnlineDiagnosticReport(
+                        host = config.host,
+                        port = config.port,
+                        configuredDatabase = config.forcedDatabase,
+                        resolvedDatabase = resolvedDatabase,
+                        tables = tables,
+                        notes = notes
+                    )
+                }
+            }
+        }
     }
 
     private fun hasAllTargetTables(connection: Connection, dbName: String): Boolean {
@@ -380,6 +485,7 @@ object ExternalMariaDbSync {
         }
     }
 }
+
 
 
 

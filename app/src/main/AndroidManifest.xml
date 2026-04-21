@@ -46,6 +46,7 @@
         <activity android:name=".PersonMealsHistoryActivity" android:exported="false"/>
         <activity android:name=".PersonGroupTasteActivity" android:exported="false"/>
         <activity android:name=".SettingsActivity" android:exported="false"/>
+        <activity android:name=".OnlineDiagnosticActivity" android:exported="false" />
 
         <receiver
             android:name=".FutureReminderReceiver"

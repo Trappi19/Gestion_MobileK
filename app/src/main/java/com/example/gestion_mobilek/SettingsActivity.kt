@@ -55,6 +55,9 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnOpenAlarmSettings).setOnClickListener {
             openAlarmSettings()
         }
+        findViewById<Button>(R.id.btnOnlineDiagnostic).setOnClickListener {
+            startActivity(Intent(this, OnlineDiagnosticActivity::class.java))
+        }
         findViewById<Button>(R.id.btnResyncReminders).setOnClickListener {
             FutureReminderScheduler.rescheduleAll(this)
             Toast.makeText(this, getString(R.string.settings_reminders_resynced), Toast.LENGTH_SHORT).show()

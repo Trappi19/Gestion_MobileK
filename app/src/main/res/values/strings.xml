@@ -63,6 +63,7 @@
     <string name="settings_data_source_external">base externe</string>
     <string name="settings_remote_database">Base distante : %1$s</string>
     <string name="settings_remote_database_unknown">non connectée</string>
+    <string name="settings_online_diagnostic">Diagnostic online</string>
     <string name="settings_resync_reminders">Resynchroniser les rappels</string>
     <string name="settings_reminders_resynced">Rappels resynchronisés</string>
     <string name="settings_about_title">À propos</string>
@@ -70,4 +71,21 @@
     <string name="settings_about_dialog_text">Gestion_MobileK\nVersion %1$s (%2$d)\n\nApplication de gestion de personnes, goûts, historiques et rappels de recettes.</string>
     <string name="settings_license">Licence</string>
     <string name="settings_license_text">Projet personnel. Les bibliothèques AndroidX et Material utilisées par cette application restent soumises à leurs licences respectives. Si tu veux une licence précise pour le projet, je peux te préparer un fichier LICENCE complet.</string>
+    <string name="online_diagnostic_title">Online diagnostic</string>
+    <string name="online_diagnostic_refresh">Refresh</string>
+    <string name="online_diagnostic_loading">Running diagnostics...</string>
+    <string name="online_diagnostic_ready">Diagnostic ready</string>
+    <string name="online_diagnostic_error">Diagnostic error</string>
+    <string name="online_diagnostic_error_unknown">Unable to start diagnostics.</string>
+    <string name="online_diagnostic_host">Host : %1$s:%2$d</string>
+    <string name="online_diagnostic_database">Resolved database : %1$s</string>
+    <string name="online_diagnostic_configured_database">Forced database : %1$s</string>
+    <string name="online_diagnostic_none">none</string>
+    <string name="online_diagnostic_table_title">Local table : %1$s | remote : %2$s</string>
+    <string name="online_diagnostic_table_missing">missing</string>
+    <string name="online_diagnostic_columns_local">Local columns : %1$s</string>
+    <string name="online_diagnostic_columns_remote">Remote columns : %1$s</string>
+    <string name="online_diagnostic_columns_mapped">Mapped columns : %1$s</string>
+    <string name="online_diagnostic_columns_ignored_local">Ignored local columns : %1$s</string>
+    <string name="online_diagnostic_columns_ignored_remote">Ignored remote columns : %1$s</string>
 </resources>

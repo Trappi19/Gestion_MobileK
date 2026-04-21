@@ -149,6 +149,17 @@
                     android:text="@string/settings_keep_external_mode" />
 
                 <Button
+                    android:id="@+id/btnOnlineDiagnostic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:backgroundTint="#4A90E2"
+                    android:text="@string/settings_online_diagnostic"
+                    android:textAllCaps="false"
+                    android:textColor="@android:color/white"
+                    app:cornerRadius="24dp" />
+
+                <Button
                     android:id="@+id/btnResyncReminders"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
