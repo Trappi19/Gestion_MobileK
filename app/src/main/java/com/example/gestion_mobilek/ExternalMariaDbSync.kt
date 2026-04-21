@@ -13,6 +13,11 @@ import java.sql.SQLException
 
 object ExternalMariaDbSync {
 
+    private data class ResolvedTable(
+        val localTable: String,
+        val remoteTable: String
+    )
+
     data class ColumnMapping(
         val localColumn: String,
         val remoteColumn: String
@@ -403,26 +408,50 @@ object ExternalMariaDbSync {
         val escapedColumns = mappedColumns.joinToString(", ") { (_, remoteColumn) -> escapeIdent(remoteColumn) }
         val placeholders = mappedColumns.joinToString(", ") { "?" }
         val selectColumns = mappedColumns.joinToString(", ") { (localColumn, _) -> escapeIdent(localColumn) }
-        val deleteSql = "DELETE FROM ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)}"
         val insertSql = "INSERT INTO ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)} ($escapedColumns) VALUES ($placeholders)"
         val selectSql = "SELECT $selectColumns FROM ${escapeIdent(localTable)}"
 
-        remoteConn.createStatement().use { it.executeUpdate(deleteSql) }
-
-        sqliteDb.rawQuery(selectSql, null).use { cursor ->
-            remoteConn.prepareStatement(insertSql).use { ps ->
-                if (cursor.moveToFirst()) {
-                    do {
-                        mappedColumns.indices.forEach { i ->
-                            bindCursorValue(i + 1, cursor, i, ps)
-                        }
-                        ps.addBatch()
-                    } while (cursor.moveToNext())
+        try {
+            sqliteDb.rawQuery(selectSql, null).use { cursor ->
+                remoteConn.prepareStatement(insertSql).use { ps ->
+                    if (cursor.moveToFirst()) {
+                        do {
+                            mappedColumns.indices.forEach { i ->
+                                bindCursorValue(i + 1, cursor, i, ps)
+                            }
+                            ps.addBatch()
+                        } while (cursor.moveToNext())
+                    }
+                    ps.executeBatch()
                 }
-                ps.executeBatch()
             }
+        } catch (e: SQLException) {
+            throw SQLException(
+                "Echec insertion table distante '$remoteTable' depuis '$localTable' : ${e.message}",
+                e.sqlState,
+                e.errorCode,
+                e
+            )
         }
         return true
+    }
+
+    private fun clearRemoteTable(
+        remoteConn: Connection,
+        databaseName: String,
+        remoteTable: String
+    ) {
+        val deleteSql = "DELETE FROM ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)}"
+        try {
+            remoteConn.createStatement().use { it.executeUpdate(deleteSql) }
+        } catch (e: SQLException) {
+            throw SQLException(
+                "Echec suppression table distante '$remoteTable' : ${e.message}",
+                e.sqlState,
+                e.errorCode,
+                e
+            )
+        }
     }
 
     fun connectAndPull(context: Context): Result<String> {
@@ -455,7 +484,7 @@ object ExternalMariaDbSync {
         }
     }
 
-    fun pushExternalToRemote(context: Context): Result<String> {
+    fun pushExternalToRemote(context: Context): Result<Int> {
         return runCatching {
             val config = resolveConfig()
             val dbName = SettingsStore.getExternalDatabaseName(context)
@@ -467,13 +496,32 @@ object ExternalMariaDbSync {
                     val sqliteDb = DatabaseHelper(context).getDatabaseForMode(useExternal = true)
                     FutureRecettesManager.ensureSchema(sqliteDb)
                     val remoteNames = remoteTableNames(dbConn, dbName)
-                    syncTables.forEach { localTable ->
-                        val remoteTable = resolveRemoteTableName(localTable, remoteNames)
-                        if (remoteTable != null) {
-                            pushTableToRemote(sqliteDb, dbConn, dbName, localTable, remoteTable)
+
+                    val resolvedTables = syncTables.mapNotNull { localTable ->
+                        resolveRemoteTableName(localTable, remoteNames)?.let { remoteTable ->
+                            ResolvedTable(localTable = localTable, remoteTable = remoteTable)
                         }
                     }
+                    if (resolvedTables.isEmpty()) {
+                        throw SQLException("Aucune table distante mappable trouvee pour '$dbName'")
+                    }
+
+                    // Delete children first to satisfy foreign keys, then insert parents first.
+                    resolvedTables.asReversed().forEach { table ->
+                        clearRemoteTable(dbConn, dbName, table.remoteTable)
+                    }
+
+                    var pushed = 0
+                    resolvedTables.forEach { table ->
+                        if (pushTableToRemote(sqliteDb, dbConn, dbName, table.localTable, table.remoteTable)) {
+                            pushed++
+                        }
+                    }
+                    if (pushed == 0) {
+                        throw SQLException("Aucune table n'a pu etre synchronisee vers la base distante '$dbName'")
+                    }
                     dbConn.commit()
+                    pushed
                 } catch (e: Exception) {
                     dbConn.rollback()
                     throw e
@@ -481,10 +529,11 @@ object ExternalMariaDbSync {
                     dbConn.autoCommit = true
                 }
             }
-            dbName
         }
     }
 }
+
+
 
 
 

@@ -130,12 +130,15 @@ class MainActivity : AppCompatActivity() {
             binding.btnPersonnes,
             binding.btnPlats,
             binding.btnHistorique,
-            binding.btnConnectExternal
         )
         views.forEach { view ->
             view.isEnabled = enabled
             view.alpha = if (enabled) 1f else 0.45f
         }
+        binding.btnConnectExternal.isEnabled = true
+        binding.btnConnectExternal.isClickable = enabled
+        binding.btnConnectExternal.isFocusable = enabled
+        binding.btnConnectExternal.alpha = 1f
         binding.bottomSheet.isEnabled = enabled
         binding.bottomSheet.isClickable = enabled
     }
@@ -178,18 +181,25 @@ class MainActivity : AppCompatActivity() {
     private fun switchBackToLocal() {
         setConnectionBusy(true)
         Thread {
-            val pushResult = ExternalMariaDbSync.pushExternalToRemote(applicationContext)
-            SettingsStore.setExternalDataSourceEnabled(applicationContext, false)
-            SettingsStore.setKeepExternalMode(applicationContext, false)
-            DatabaseHelper.closeActiveDatabase()
+            val pushResult = ExternalSyncManager.pushToRemote(applicationContext)
             runOnUiThread {
                 setConnectionBusy(false)
+                // Always switch to local mode, even if remote push fails.
+                SettingsStore.setExternalDataSourceEnabled(applicationContext, false)
+                SettingsStore.setKeepExternalMode(applicationContext, false)
+                DatabaseHelper.closeActiveDatabase()
+
                 pushResult
                     .onSuccess {
                         Toast.makeText(this, getString(R.string.home_returned_local), Toast.LENGTH_SHORT).show()
                     }
-                    .onFailure {
-                        Toast.makeText(this, getString(R.string.home_returned_local_unsynced), Toast.LENGTH_LONG).show()
+                    .onFailure { e ->
+                        val details = e.message?.takeIf { it.isNotBlank() } ?: "?"
+                        Toast.makeText(
+                            this,
+                            getString(R.string.home_returned_local_unsynced) + " : " + details,
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 loadLastMeals()
             }
