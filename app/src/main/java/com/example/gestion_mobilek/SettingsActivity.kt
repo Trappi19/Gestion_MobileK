@@ -28,13 +28,22 @@ class SettingsActivity : AppCompatActivity() {
 
         val tvNotificationStatus = findViewById<TextView>(R.id.tvNotificationStatus)
         val tvAlarmStatus = findViewById<TextView>(R.id.tvAlarmStatus)
+        val tvDataSourceStatus = findViewById<TextView>(R.id.tvDataSourceStatus)
+        val tvRemoteDbName = findViewById<TextView>(R.id.tvRemoteDbName)
         val tvAbout = findViewById<TextView>(R.id.tvAbout)
         val cbReminderNotifications = findViewById<CheckBox>(R.id.cbReminderNotifications)
+        val cbKeepExternalMode = findViewById<CheckBox>(R.id.cbKeepExternalMode)
 
         cbReminderNotifications.isChecked = SettingsStore.areReminderNotificationsEnabled(this)
         cbReminderNotifications.setOnCheckedChangeListener { _, isChecked ->
             SettingsStore.setReminderNotificationsEnabled(this, isChecked)
-            refreshStatuses(tvNotificationStatus, tvAlarmStatus)
+            refreshStatuses(tvNotificationStatus, tvAlarmStatus, tvDataSourceStatus, tvRemoteDbName)
+        }
+
+        cbKeepExternalMode.isChecked = SettingsStore.shouldKeepExternalMode(this)
+        cbKeepExternalMode.setOnCheckedChangeListener { _, isChecked ->
+            SettingsStore.setKeepExternalMode(this, isChecked)
+            refreshStatuses(tvNotificationStatus, tvAlarmStatus, tvDataSourceStatus, tvRemoteDbName)
         }
 
         findViewById<Button>(R.id.btnRequestNotifications).setOnClickListener {
@@ -56,7 +65,7 @@ class SettingsActivity : AppCompatActivity() {
 
         tvAbout.text = getAppVersionSummary()
 
-        refreshStatuses(tvNotificationStatus, tvAlarmStatus)
+        refreshStatuses(tvNotificationStatus, tvAlarmStatus, tvDataSourceStatus, tvRemoteDbName)
 
         when {
             intent.getBooleanExtra("OPEN_LICENSE", false) -> showLicenseDialog()
@@ -64,7 +73,12 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun refreshStatuses(tvNotificationStatus: TextView, tvAlarmStatus: TextView) {
+    private fun refreshStatuses(
+        tvNotificationStatus: TextView,
+        tvAlarmStatus: TextView,
+        tvDataSourceStatus: TextView,
+        tvRemoteDbName: TextView
+    ) {
         val notificationsGranted = if (Build.VERSION.SDK_INT < 33) {
             true
         } else {
@@ -84,6 +98,19 @@ class SettingsActivity : AppCompatActivity() {
         tvAlarmStatus.text = getString(
             R.string.settings_alarm_status,
             if (exactAlarmAllowed) getString(R.string.settings_status_granted) else getString(R.string.settings_status_missing)
+        )
+
+        val dataSourceText = if (SettingsStore.isExternalDataSourceEnabled(this)) {
+            getString(R.string.settings_data_source_external)
+        } else {
+            getString(R.string.settings_data_source_local)
+        }
+        tvDataSourceStatus.text = getString(R.string.settings_data_source_status, dataSourceText)
+
+        val dbName = SettingsStore.getExternalDatabaseName(this)
+        tvRemoteDbName.text = getString(
+            R.string.settings_remote_database,
+            dbName ?: getString(R.string.settings_remote_database_unknown)
         )
     }
 

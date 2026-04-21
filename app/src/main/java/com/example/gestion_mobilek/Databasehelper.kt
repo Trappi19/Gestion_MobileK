@@ -7,40 +7,60 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 class DatabaseHelper(private val context: Context) :
-    SQLiteOpenHelper(context, DB_NAME, null, DB_VERSION) {
+    SQLiteOpenHelper(context, LOCAL_DB_NAME, null, DB_VERSION) {
 
     companion object {
-        private const val DB_NAME = "bdd.db"
+        private const val LOCAL_DB_NAME = "bdd.db"
+        const val EXTERNAL_CACHE_DB_NAME = "bdd_online.db"
         private const val DB_VERSION = 1
-        private var dbInstance: SQLiteDatabase? = null  // Instance unique
-        private var copied = false  // Flag copie par session
+        private var dbInstance: SQLiteDatabase? = null
+        private var currentDbName: String? = null
+
+        @Synchronized
+        fun closeActiveDatabase() {
+            dbInstance?.takeIf { it.isOpen }?.close()
+            dbInstance = null
+            currentDbName = null
+        }
     }
 
     override fun onCreate(db: SQLiteDatabase?) {}
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {}
 
     fun getDatabase(): SQLiteDatabase {
-        if (dbInstance == null || !dbInstance!!.isOpen) {
-            if (!copied && !context.getDatabasePath(DB_NAME).exists()) {
-                copyDatabaseFromAssets()
-                copied = true
-            }
-            val dbPath = context.getDatabasePath(DB_NAME).path
-            dbInstance = SQLiteDatabase.openDatabase(
-                dbPath, null, SQLiteDatabase.OPEN_READWRITE
-            )
+        return getDatabaseForMode(SettingsStore.isExternalDataSourceEnabled(context))
+    }
+
+    @Synchronized
+    fun getDatabaseForMode(useExternal: Boolean): SQLiteDatabase {
+        val targetName = if (useExternal) EXTERNAL_CACHE_DB_NAME else LOCAL_DB_NAME
+        ensureDatabaseExists(targetName)
+
+        if (dbInstance == null || !dbInstance!!.isOpen || currentDbName != targetName) {
+            closeActiveDatabase()
+            val dbPath = context.getDatabasePath(targetName).path
+            dbInstance = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
+            currentDbName = targetName
         }
+
         return dbInstance!!
     }
 
-    private fun copyDatabaseFromAssets() {
-        val dbFile = context.getDatabasePath(DB_NAME)
+    private fun ensureDatabaseExists(dbName: String) {
+        val dbFile = context.getDatabasePath(dbName)
+        if (!dbFile.exists()) {
+            copyDatabaseFromAssets(dbName)
+        }
+    }
+
+    private fun copyDatabaseFromAssets(targetDbName: String) {
+        val dbFile = context.getDatabasePath(targetDbName)
         if (!dbFile.parentFile!!.exists()) dbFile.parentFile!!.mkdirs()
 
         if (dbFile.exists()) return
 
         try {
-            context.assets.open(DB_NAME).use { input ->
+            context.assets.open(LOCAL_DB_NAME).use { input ->
                 FileOutputStream(dbFile).use { output ->
                     val buffer = ByteArray(1024)
                     var length: Int

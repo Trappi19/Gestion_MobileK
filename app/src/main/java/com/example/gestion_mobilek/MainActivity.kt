@@ -16,6 +16,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var bottomSheetBehavior: BottomSheetBehavior<LinearLayout>
+    @Volatile
+    private var connectionBusy = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
@@ -77,6 +79,21 @@ class MainActivity : AppCompatActivity() {
                 show()
             }
         }
+
+        binding.btnConnectExternal.setOnClickListener {
+            if (connectionBusy) return@setOnClickListener
+            if (SettingsStore.isExternalDataSourceEnabled(this)) {
+                switchBackToLocal()
+            } else {
+                connectToExternalSource()
+            }
+        }
+
+        refreshDataSourceUi()
+
+        if (SettingsStore.shouldKeepExternalMode(this) && !SettingsStore.isExternalDataSourceEnabled(this)) {
+            connectToExternalSource(auto = true)
+        }
     }
 
     override fun onResume() {
@@ -86,9 +103,79 @@ class MainActivity : AppCompatActivity() {
             FutureReminderScheduler.rescheduleAll(this)
         } catch (_: SQLiteException) {
         }
+        refreshDataSourceUi()
+        if (!connectionBusy && SettingsStore.shouldKeepExternalMode(this) && !SettingsStore.isExternalDataSourceEnabled(this)) {
+            connectToExternalSource(auto = true)
+        }
         binding.containerLastMeals.post {
             loadLastMeals()
         }
+    }
+
+    private fun setConnectionBusy(busy: Boolean) {
+        connectionBusy = busy
+        binding.btnConnectExternal.isEnabled = !busy
+        if (busy) {
+            binding.btnConnectExternal.text = getString(R.string.home_connecting)
+        } else {
+            refreshDataSourceUi()
+        }
+    }
+
+    private fun refreshDataSourceUi() {
+        val external = SettingsStore.isExternalDataSourceEnabled(this)
+        if (external) {
+            binding.btnConnectExternal.text = getString(R.string.home_disconnect_external)
+            val dbName = SettingsStore.getExternalDatabaseName(this) ?: "?"
+            binding.tvDataSourceStatus.text = getString(R.string.home_data_source_external, dbName)
+        } else {
+            binding.btnConnectExternal.text = getString(R.string.home_connect_external)
+            binding.tvDataSourceStatus.text = getString(R.string.home_data_source_local)
+        }
+    }
+
+    private fun connectToExternalSource(auto: Boolean = false) {
+        if (connectionBusy) return
+        setConnectionBusy(true)
+        Thread {
+            val result = ExternalMariaDbSync.connectAndPull(applicationContext)
+            runOnUiThread {
+                setConnectionBusy(false)
+                result
+                    .onSuccess { dbName ->
+                        if (!auto) {
+                            Toast.makeText(this, getString(R.string.home_external_connected, dbName), Toast.LENGTH_LONG).show()
+                        }
+                        loadLastMeals()
+                    }
+                    .onFailure { e ->
+                        if (!auto) {
+                            Toast.makeText(this, getString(R.string.home_external_connection_failed, e.message ?: "?"), Toast.LENGTH_LONG).show()
+                        }
+                    }
+            }
+        }.start()
+    }
+
+    private fun switchBackToLocal() {
+        setConnectionBusy(true)
+        Thread {
+            val pushResult = ExternalMariaDbSync.pushExternalToRemote(applicationContext)
+            SettingsStore.setExternalDataSourceEnabled(applicationContext, false)
+            SettingsStore.setKeepExternalMode(applicationContext, false)
+            DatabaseHelper.closeActiveDatabase()
+            runOnUiThread {
+                setConnectionBusy(false)
+                pushResult
+                    .onSuccess {
+                        Toast.makeText(this, getString(R.string.home_returned_local), Toast.LENGTH_SHORT).show()
+                    }
+                    .onFailure {
+                        Toast.makeText(this, getString(R.string.home_returned_local_unsynced), Toast.LENGTH_LONG).show()
+                    }
+                loadLastMeals()
+            }
+        }.start()
     }
 
     // ─── BOTTOM SHEET ───────────────────────────────────────────────

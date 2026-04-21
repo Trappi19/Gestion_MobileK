@@ -148,6 +148,29 @@
                     app:cornerRadius="24dp"/>
             </LinearLayout>
 
+            <Button
+                android:id="@+id/btnConnectExternal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="20dp"
+                android:backgroundTint="#7B68EE"
+                android:text="@string/home_connect_external"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                app:cornerRadius="24dp" />
+
+            <TextView
+                android:id="@+id/tvDataSourceStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:text="@string/home_data_source_local"
+                android:textColor="#666666"
+                android:textSize="12sp" />
+
         </LinearLayout>
     </LinearLayout>
 

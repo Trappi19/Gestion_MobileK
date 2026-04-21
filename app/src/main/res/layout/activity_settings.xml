@@ -116,6 +116,38 @@
                     android:layout_marginBottom="8dp"
                     android:text="@string/settings_reminder_notifications" />
 
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/settings_data_source_title"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvDataSourceStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="-"
+                    android:textColor="#444444" />
+
+                <TextView
+                    android:id="@+id/tvRemoteDbName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="-"
+                    android:textColor="#444444" />
+
+                <CheckBox
+                    android:id="@+id/cbKeepExternalMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/settings_keep_external_mode" />
+
                 <Button
                     android:id="@+id/btnResyncReminders"
                     android:layout_width="match_parent"
