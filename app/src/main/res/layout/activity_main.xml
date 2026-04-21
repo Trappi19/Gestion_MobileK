@@ -179,11 +179,12 @@
         android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#1A1A1A"
+        android:background="#000000"
         android:orientation="vertical"
         android:clickable="true"
         android:focusable="true"
-        app:behavior_peekHeight="80dp"
+        android:paddingBottom="20dp"
+        app:behavior_peekHeight="100dp"
         app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
         <!-- Trait blanc glissable -->
