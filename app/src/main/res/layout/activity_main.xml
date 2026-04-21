@@ -148,6 +148,29 @@
                     app:cornerRadius="24dp"/>
             </LinearLayout>
 
+            <Button
+                android:id="@+id/btnConnectExternal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="20dp"
+                android:backgroundTint="#7B68EE"
+                android:text="@string/home_connect_external"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textStyle="bold"
+                app:cornerRadius="24dp" />
+
+            <TextView
+                android:id="@+id/tvDataSourceStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="8dp"
+                android:text="@string/home_data_source_local"
+                android:textColor="#666666"
+                android:textSize="12sp" />
+
         </LinearLayout>
     </LinearLayout>
 
@@ -156,11 +179,12 @@
         android:id="@+id/bottomSheet"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#1A1A1A"
+        android:background="#000000"
         android:orientation="vertical"
         android:clickable="true"
         android:focusable="true"
-        app:behavior_peekHeight="80dp"
+        android:paddingBottom="20dp"
+        app:behavior_peekHeight="100dp"
         app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
 
         <!-- Trait blanc glissable -->

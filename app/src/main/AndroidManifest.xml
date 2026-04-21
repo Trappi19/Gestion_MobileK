@@ -5,8 +5,10 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
+        android:name=".app.GestionMobileKApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -18,7 +20,7 @@
         <!-- Ton MainActivity déjà là -->
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.main.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -28,30 +30,31 @@
 
         <!-- AJOUTE ÇA -->
         <activity
-            android:name=".PersonListActivity"
+            android:name=".ui.persons.PersonListActivity"
             android:exported="false" />
 
-        <activity android:name=".AddPersonActivity" android:exported="false" />
-        <activity android:name=".ItemListActivity" android:exported="false"/>
-        <activity android:name=".AddItemActivity" android:exported="false"/>
-        <activity android:name=".PersonDetailActivity" android:exported="false"/>
-        <activity android:name=".EditPersonActivity" android:exported="false"/>
-        <activity android:name=".HistoriqueActivity" android:exported="false"/>
-        <activity android:name=".RepasDetailActivity" android:exported="false"/>
-        <activity android:name=".FutureRecettesActivity" android:exported="false"/>
-        <activity android:name=".AddEditFutureRecetteActivity" android:exported="false"/>
-        <activity android:name=".FutureRecetteDetailActivity" android:exported="false"/>
-        <activity android:name=".AddHistoriqueRepasActivity" android:exported="false"/>
-        <activity android:name=".PersonMealsHistoryActivity" android:exported="false"/>
-        <activity android:name=".PersonGroupTasteActivity" android:exported="false"/>
-        <activity android:name=".SettingsActivity" android:exported="false"/>
+        <activity android:name=".ui.persons.AddPersonActivity" android:exported="false" />
+        <activity android:name=".ui.items.ItemListActivity" android:exported="false"/>
+        <activity android:name=".ui.items.AddItemActivity" android:exported="false"/>
+        <activity android:name=".ui.persons.PersonDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.persons.EditPersonActivity" android:exported="false"/>
+        <activity android:name=".ui.history.HistoriqueActivity" android:exported="false"/>
+        <activity android:name=".ui.history.RepasDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.future.FutureRecettesActivity" android:exported="false"/>
+        <activity android:name=".ui.future.AddEditFutureRecetteActivity" android:exported="false"/>
+        <activity android:name=".ui.future.FutureRecetteDetailActivity" android:exported="false"/>
+        <activity android:name=".ui.history.AddHistoriqueRepasActivity" android:exported="false"/>
+        <activity android:name=".ui.persons.PersonMealsHistoryActivity" android:exported="false"/>
+        <activity android:name=".ui.persons.PersonGroupTasteActivity" android:exported="false"/>
+        <activity android:name=".ui.settings.SettingsActivity" android:exported="false"/>
+        <activity android:name=".ui.settings.OnlineDiagnosticActivity" android:exported="false" />
 
         <receiver
-            android:name=".FutureReminderReceiver"
+            android:name=".reminders.FutureReminderReceiver"
             android:exported="false" />
 
         <receiver
-            android:name=".FutureReminderBootReceiver"
+            android:name=".reminders.FutureReminderBootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

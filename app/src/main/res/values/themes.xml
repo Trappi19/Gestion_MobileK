@@ -4,8 +4,11 @@
 
         <!-- Violet pour les boutons -->
         <item name="colorPrimary">#8200AD</item>
-        <item name="colorPrimaryVariant">#6A5ACD</item>
+        <item name="colorPrimaryVariant">#4A90E2</item> <!-- Changed to Blue for status bar -->
         <item name="colorOnPrimary">@android:color/white</item>
+
+        <item name="android:statusBarColor">#4A90E2</item>
+        <item name="android:navigationBarColor">#000000</item>
 
         <!-- Bandeau bleu inchangé (défini direct en XML, pas via colorPrimary) -->
         <item name="android:windowBackground">#F5F5F5</item>
@@ -22,4 +25,3 @@
         <item name="cornerSize">24dp</item>  <!-- Plus grand = plus arrondi, 50% = pilule -->
     </style>
 </resources>
-
