@@ -114,12 +114,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun setConnectionBusy(busy: Boolean) {
         connectionBusy = busy
-        binding.btnConnectExternal.isEnabled = !busy
+        setHomeButtonsEnabled(!busy)
         if (busy) {
             binding.btnConnectExternal.text = getString(R.string.home_connecting)
         } else {
             refreshDataSourceUi()
         }
+    }
+
+    private fun setHomeButtonsEnabled(enabled: Boolean) {
+        val views = listOf(
+            binding.btnMenu,
+            binding.btnIngredients,
+            binding.btnFutureRecettes,
+            binding.btnPersonnes,
+            binding.btnPlats,
+            binding.btnHistorique,
+            binding.btnConnectExternal
+        )
+        views.forEach { view ->
+            view.isEnabled = enabled
+            view.alpha = if (enabled) 1f else 0.45f
+        }
+        binding.bottomSheet.isEnabled = enabled
+        binding.bottomSheet.isClickable = enabled
     }
 
     private fun refreshDataSourceUi() {

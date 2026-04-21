@@ -17,7 +17,7 @@
     <string name="home_external_connected">Connecté à la base externe : %1$s</string>
     <string name="home_external_connection_failed">Connexion externe impossible : %1$s</string>
     <string name="home_returned_local">Retour à la base locale</string>
-    <string name="home_returned_local_unsynced">Retour local effectué (synchronisation distante échouée)</string>
+    <string name="home_returned_local_unsynced">synchronisation échoué</string>
     <string name="group_taste_likes_common">Aiment ensemble</string>
     <string name="group_taste_likes_all">Aiment tous</string>
     <string name="group_taste_dislikes_common">N’aiment pas ensemble</string>
