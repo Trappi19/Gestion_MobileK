@@ -171,16 +171,10 @@ class SettingsActivity : AppCompatActivity() {
     private fun showAboutDialog() {
         val packageInfo = packageManager.getPackageInfo(packageName, 0)
         val versionName = packageInfo.versionName ?: "?"
-        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            packageInfo.longVersionCode
-        } else {
-            @Suppress("DEPRECATION")
-            packageInfo.versionCode.toLong()
-        }
 
         AlertDialog.Builder(this)
             .setTitle(R.string.settings_about_title)
-            .setMessage(getString(R.string.settings_about_dialog_text, versionName, versionCode))
+            .setMessage(getString(R.string.settings_about_dialog_text, versionName))
             .setPositiveButton(android.R.string.ok, null)
             .show()
     }
@@ -188,13 +182,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun getAppVersionSummary(): String {
         val packageInfo = packageManager.getPackageInfo(packageName, 0)
         val versionName = packageInfo.versionName ?: "?"
-        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            packageInfo.longVersionCode
-        } else {
-            @Suppress("DEPRECATION")
-            packageInfo.versionCode.toLong()
-        }
-        return getString(R.string.settings_about_summary, versionName, versionCode)
+        return getString(R.string.settings_about_summary, versionName)
     }
 }
 

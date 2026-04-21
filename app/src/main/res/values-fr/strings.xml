@@ -68,8 +68,8 @@
     <string name="settings_resync_reminders">Resynchroniser les rappels</string>
     <string name="settings_reminders_resynced">Rappels resynchronisés</string>
     <string name="settings_about_title">À propos</string>
-    <string name="settings_about_summary">Version %1$s (%2$d)</string>
-    <string name="settings_about_dialog_text">Gestion_MobileK\nVersion %1$s (%2$d)\n\nApplication de gestion de personnes, goûts, historiques et rappels de recettes.</string>
+    <string name="settings_about_summary">Version %1$s</string>
+    <string name="settings_about_dialog_text">Gestion_MobileK\nVersion %1$s\n\nApplication de gestion de personnes, goûts, historiques et rappels de recettes.</string>
     <string name="settings_license">Licence</string>
     <string name="settings_license_text">Projet personnel. Les bibliothèques AndroidX et Material utilisées par cette application restent soumises à leurs licences respectives. @SevanAndCO.</string>
     <string name="online_diagnostic_title">Diagnostic online</string>
