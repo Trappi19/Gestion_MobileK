@@ -9,7 +9,14 @@ object FutureRecettesManager {
 
     private const val FUTURE_TABLE = "future_repas"
     const val NEW_DATE_COL = "date_dernier_repas"
-    private const val LEGACY_DATE_COL = "date_repas"
+    const val LEGACY_DATE_COL = "date_repas"
+
+    data class SourceConfig(
+        val tableName: String,
+        val dateColumn: String,
+        val isStorageDate: Boolean,
+        val isExternalMode: Boolean
+    )
 
     private fun dateSortExpr(column: String): String {
         return "substr(printf('%08d', CAST($column AS INTEGER)), 5, 4) || " +
@@ -29,7 +36,15 @@ object FutureRecettesManager {
             )
             """.trimIndent()
         )
-        FutureReminderStore.ensureSchema(db)
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS _sync_history (
+                table_name TEXT,
+                pk_val TEXT,
+                PRIMARY KEY (table_name, pk_val)
+            )
+            """.trimIndent()
+        )
     }
 
     fun resolveDateColumn(db: SQLiteDatabase): String {
@@ -53,7 +68,21 @@ object FutureRecettesManager {
         }
     }
 
+    fun resolveSourceConfig(context: Context, db: SQLiteDatabase): SourceConfig {
+        return SourceConfig(
+            tableName = FUTURE_TABLE,
+            dateColumn = resolveDateColumn(db),
+            isStorageDate = true,
+            isExternalMode = SettingsStore.isExternalDataSourceEnabled(context)
+        )
+    }
+
+    fun resolveSourceTable(context: Context): String {
+        return FUTURE_TABLE
+    }
+
     fun migrateDueFutureRepas(context: Context, db: SQLiteDatabase) {
+        if (SettingsStore.isExternalDataSourceEnabled(context)) return
         ensureSchema(db)
         val repasDateConfig = RepasDateCompat.resolve(db)
         val futureDateCol = resolveDateColumn(db)
@@ -94,7 +123,7 @@ object FutureRecettesManager {
             if (dueIds.isEmpty()) return
 
             dueIds.forEach { futureId ->
-                FutureReminderScheduler.cancelFutureReminders(context, futureId, deleteRows = true)
+                FutureReminderScheduler.cancelMealReminders(context, futureId, 0, deleteRows = true)
             }
 
             db.beginTransaction()
@@ -105,13 +134,11 @@ object FutureRecettesManager {
                 dueIds.forEach { id ->
                     db.delete(FUTURE_TABLE, "id = ?", arrayOf(id.toString()))
                 }
-                // Mettre à jour dernier_passage des personnes concernées
                 dueMeals.forEach { meal ->
                     val idPersonnagesRaw = meal.getAsString("id_personnes") ?: ""
                     val personIds = idPersonnagesRaw.split(",").mapNotNull { it.trim().toIntOrNull() }
                     val mealDate = meal.getAsString(repasDateConfig.columnName) ?: ""
                     personIds.forEach { personId ->
-                        // Vérifier la date existante
                         val personCursor = db.rawQuery(
                             "SELECT dernier_passage FROM personnes WHERE id = ?",
                             arrayOf(personId.toString())
@@ -120,11 +147,9 @@ object FutureRecettesManager {
                         if (personCursor.moveToFirst()) {
                             val existingDate = personCursor.getString(0)
                             if (!existingDate.isNullOrBlank()) {
-                                // Comparer les dates au format sortable (yyyyMMdd)
                                 val mealSort = if (repasDateConfig.isStorageDate) {
                                     DateStorageUtils.toSortable(mealDate) ?: ""
                                 } else {
-                                    // Legacy: convertir nb_jours en date de stockage, puis en sortable
                                     val asStorage = DateStorageUtils.normalizeStorageDate(mealDate.toIntOrNull()?.toString() ?: "")
                                     DateStorageUtils.toSortable(asStorage) ?: ""
                                 }
@@ -134,7 +159,6 @@ object FutureRecettesManager {
                                     val asStorage = DateStorageUtils.normalizeStorageDate(existingDate.toIntOrNull()?.toString() ?: "")
                                     DateStorageUtils.toSortable(asStorage) ?: ""
                                 }
-                                // Ne mettre à jour que si mealDate > existingDate
                                 shouldUpdate = mealSort > existingSort
                             }
                         }
@@ -157,4 +181,3 @@ object FutureRecettesManager {
         }
     }
 }
-

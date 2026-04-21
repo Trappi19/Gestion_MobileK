@@ -18,6 +18,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class PersonListActivity : AppCompatActivity() {
@@ -30,6 +31,7 @@ class PersonListActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var container: LinearLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout
     private var fabOpen = false
     private var selectionMode = SelectionMode.NONE
     private val selectedIds = mutableSetOf<Int>()
@@ -41,6 +43,10 @@ class PersonListActivity : AppCompatActivity() {
 
         dbHelper = DatabaseHelper(this)
         container = findViewById(R.id.containerPersons)
+        swipeRefresh = findViewById(R.id.swipeRefreshPersons)
+        swipeRefresh.setOnRefreshListener {
+            reloadPersons()
+        }
 
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
 
@@ -56,8 +62,7 @@ class PersonListActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 searchQuery = s?.toString().orEmpty().trim()
-                container.removeAllViews()
-                loadPersonsFromDb()
+                reloadPersons()
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
@@ -69,8 +74,7 @@ class PersonListActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         exitSelectionMode()
-        container.removeAllViews()
-        loadPersonsFromDb()
+        reloadPersons()
     }
 
     // ─── FAB ────────────────────────────────────────────────────────────────
@@ -153,8 +157,7 @@ class PersonListActivity : AppCompatActivity() {
         selectedIds.clear()
         initialSelectedPersonId?.let { selectedIds.add(it) }
         updateHeaderForSelectionMode()
-        container.removeAllViews()
-        loadPersonsFromDb()
+        reloadPersons()
     }
 
     private fun enterGroupSelectionMode(initialSelectedPersonId: Int? = null) {
@@ -162,8 +165,7 @@ class PersonListActivity : AppCompatActivity() {
         selectedIds.clear()
         initialSelectedPersonId?.let { selectedIds.add(it) }
         updateHeaderForSelectionMode()
-        container.removeAllViews()
-        loadPersonsFromDb()
+        reloadPersons()
     }
 
     private fun exitSelectionMode() {
@@ -245,8 +247,7 @@ class PersonListActivity : AppCompatActivity() {
                     }
                     Toast.makeText(this, "${selectedIds.size} personne(s) supprimee(s)", Toast.LENGTH_SHORT).show()
                     exitSelectionMode()
-                    container.removeAllViews()
-                    loadPersonsFromDb()
+                    reloadPersons()
                 } catch (e: SQLiteException) {
                     Toast.makeText(this, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
                 }
@@ -256,6 +257,11 @@ class PersonListActivity : AppCompatActivity() {
     }
 
     // ─── LISTE ──────────────────────────────────────────────────────────────
+
+    private fun reloadPersons() {
+        container.removeAllViews()
+        loadPersonsFromDb()
+    }
 
     private fun loadPersonsFromDb() {
         try {
@@ -282,6 +288,8 @@ class PersonListActivity : AppCompatActivity() {
             cursor.close()
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        } finally {
+            swipeRefresh.isRefreshing = false
         }
     }
 
@@ -373,8 +381,7 @@ class PersonListActivity : AppCompatActivity() {
                     db.delete("personnes", "id = ?", arrayOf(personId.toString()))
                     db.delete("gouts", "id_personne = ?", arrayOf(personId.toString()))
                     Toast.makeText(this, "$name supprime", Toast.LENGTH_SHORT).show()
-                    container.removeAllViews()
-                    loadPersonsFromDb()
+                    reloadPersons()
                 } catch (e: SQLiteException) {
                     Toast.makeText(this, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
                 }

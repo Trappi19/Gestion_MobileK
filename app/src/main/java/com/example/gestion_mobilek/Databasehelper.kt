@@ -13,14 +13,15 @@ class DatabaseHelper(private val context: Context) :
         private const val LOCAL_DB_NAME = "bdd.db"
         const val EXTERNAL_CACHE_DB_NAME = "bdd_online.db"
         private const val DB_VERSION = 1
-        private var dbInstance: SQLiteDatabase? = null
-        private var currentDbName: String? = null
+        private var localDbInstance: SQLiteDatabase? = null
+        private var externalDbInstance: SQLiteDatabase? = null
 
         @Synchronized
         fun closeActiveDatabase() {
-            dbInstance?.takeIf { it.isOpen }?.close()
-            dbInstance = null
-            currentDbName = null
+            localDbInstance?.takeIf { it.isOpen }?.close()
+            localDbInstance = null
+            externalDbInstance?.takeIf { it.isOpen }?.close()
+            externalDbInstance = null
         }
     }
 
@@ -36,14 +37,19 @@ class DatabaseHelper(private val context: Context) :
         val targetName = if (useExternal) EXTERNAL_CACHE_DB_NAME else LOCAL_DB_NAME
         ensureDatabaseExists(targetName)
 
-        if (dbInstance == null || !dbInstance!!.isOpen || currentDbName != targetName) {
-            closeActiveDatabase()
-            val dbPath = context.getDatabasePath(targetName).path
-            dbInstance = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
-            currentDbName = targetName
+        if (useExternal) {
+            if (externalDbInstance == null || !externalDbInstance!!.isOpen) {
+                val dbPath = context.getDatabasePath(targetName).path
+                externalDbInstance = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
+            }
+            return externalDbInstance!!
+        } else {
+            if (localDbInstance == null || !localDbInstance!!.isOpen) {
+                val dbPath = context.getDatabasePath(targetName).path
+                localDbInstance = SQLiteDatabase.openDatabase(dbPath, null, SQLiteDatabase.OPEN_READWRITE)
+            }
+            return localDbInstance!!
         }
-
-        return dbInstance!!
     }
 
     private fun ensureDatabaseExists(dbName: String) {

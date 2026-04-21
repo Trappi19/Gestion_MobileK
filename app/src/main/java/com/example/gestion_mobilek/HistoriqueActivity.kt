@@ -11,11 +11,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class HistoriqueActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var container: LinearLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout
     private var selectionMode = false
     private val selectedIds = mutableSetOf<Int>()
     private var searchQuery = ""
@@ -26,6 +28,10 @@ class HistoriqueActivity : AppCompatActivity() {
 
         dbHelper = DatabaseHelper(this)
         container = findViewById(R.id.containerRepas)
+        swipeRefresh = findViewById(R.id.swipeRefreshHistorique)
+        swipeRefresh.setOnRefreshListener {
+            reloadRepas()
+        }
 
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
 
@@ -67,8 +73,7 @@ class HistoriqueActivity : AppCompatActivity() {
         selectedIds.clear()
         findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.VISIBLE
         findViewById<ImageButton>(R.id.btnAdd).visibility = View.GONE
-        container.removeAllViews()
-        loadRepas()
+        reloadRepas()
     }
 
     private fun exitSelectionMode() {
@@ -76,6 +81,10 @@ class HistoriqueActivity : AppCompatActivity() {
         selectedIds.clear()
         findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.GONE
         findViewById<ImageButton>(R.id.btnAdd).visibility = View.VISIBLE
+        reloadRepas()
+    }
+
+    private fun reloadRepas() {
         container.removeAllViews()
         loadRepas()
     }
@@ -168,6 +177,8 @@ class HistoriqueActivity : AppCompatActivity() {
             cursor.close()
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        } finally {
+            swipeRefresh.isRefreshing = false
         }
     }
 

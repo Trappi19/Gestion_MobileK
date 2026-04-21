@@ -183,11 +183,12 @@ class MainActivity : AppCompatActivity() {
         Thread {
             val pushResult = ExternalSyncManager.pushToRemote(applicationContext)
             runOnUiThread {
-                setConnectionBusy(false)
                 // Always switch to local mode, even if remote push fails.
                 SettingsStore.setExternalDataSourceEnabled(applicationContext, false)
                 SettingsStore.setKeepExternalMode(applicationContext, false)
                 DatabaseHelper.closeActiveDatabase()
+
+                setConnectionBusy(false)
 
                 pushResult
                     .onSuccess {

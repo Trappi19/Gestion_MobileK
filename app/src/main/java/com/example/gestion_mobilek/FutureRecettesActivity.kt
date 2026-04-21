@@ -11,15 +11,17 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class FutureRecettesActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var container: LinearLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout
     private var selectionMode = false
     private val selectedIds = mutableSetOf<Int>()
-    private var futureDateColumn: String = FutureRecettesManager.NEW_DATE_COL
     private var searchQuery = ""
+    private var sourceConfig: FutureRecettesManager.SourceConfig? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +29,8 @@ class FutureRecettesActivity : AppCompatActivity() {
 
         dbHelper = DatabaseHelper(this)
         container = findViewById(R.id.containerFutureRepas)
+        swipeRefresh = findViewById(R.id.swipeRefreshFuture)
+        swipeRefresh.setOnRefreshListener { reloadFutureRepas() }
 
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
         findViewById<ImageButton>(R.id.btnAdd).setOnClickListener {
@@ -43,24 +47,39 @@ class FutureRecettesActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 searchQuery = s?.toString().orEmpty().trim()
-                container.removeAllViews()
-                loadFutureRepas()
+                reloadFutureRepas()
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
+
+        refreshSourceConfig()
     }
 
     override fun onResume() {
         super.onResume()
+        refreshSourceConfig()
         try {
             val db = dbHelper.getDatabase()
-            FutureRecettesManager.ensureSchema(db)
-            futureDateColumn = FutureRecettesManager.resolveDateColumn(db)
-            FutureRecettesManager.migrateDueFutureRepas(this, db)
+            if (sourceConfig?.isExternalMode != true) {
+                FutureRecettesManager.migrateDueFutureRepas(this, db)
+            }
             FutureReminderScheduler.rescheduleAll(this)
         } catch (_: SQLiteException) {
         }
         exitSelectionMode()
+    }
+
+    private fun refreshSourceConfig() {
+        try {
+            sourceConfig = FutureRecettesManager.resolveSourceConfig(this, dbHelper.getDatabase())
+            if (sourceConfig?.isExternalMode == true) {
+                FutureReminderStore.ensureSchema(dbHelper.getDatabaseForMode(false))
+            } else {
+                FutureRecettesManager.ensureSchema(dbHelper.getDatabase())
+                FutureReminderStore.ensureSchema(dbHelper.getDatabaseForMode(false))
+            }
+        } catch (_: SQLiteException) {
+        }
     }
 
     private fun enterSelectionMode() {
@@ -68,8 +87,7 @@ class FutureRecettesActivity : AppCompatActivity() {
         selectedIds.clear()
         findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.VISIBLE
         findViewById<ImageButton>(R.id.btnAdd).visibility = View.GONE
-        container.removeAllViews()
-        loadFutureRepas()
+        reloadFutureRepas()
     }
 
     private fun exitSelectionMode() {
@@ -77,42 +95,80 @@ class FutureRecettesActivity : AppCompatActivity() {
         selectedIds.clear()
         findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.GONE
         findViewById<ImageButton>(R.id.btnAdd).visibility = View.VISIBLE
-        container.removeAllViews()
-        loadFutureRepas()
+        reloadFutureRepas()
     }
 
-    private fun loadFutureRepas() {
+    private fun reloadFutureRepas() {
+        if (SettingsStore.isExternalDataSourceEnabled(this)) {
+            // Pull external data before local refresh
+            Thread {
+                val syncResult = ExternalMariaDbSync.connectAndPull(this@FutureRecettesActivity)
+                runOnUiThread {
+                    if (syncResult.isFailure) {
+                        Toast.makeText(this@FutureRecettesActivity, "Echec de l'actualisation distante", Toast.LENGTH_SHORT).show()
+                    }
+                    loadLocalData()
+                }
+            }.start()
+        } else {
+            loadLocalData()
+        }
+    }
+
+    private fun loadLocalData() {
+        container.removeAllViews()
         try {
             val db = dbHelper.getDatabase()
-            FutureRecettesManager.ensureSchema(db)
-            futureDateColumn = FutureRecettesManager.resolveDateColumn(db)
-
+            val futureSource = FutureRecettesManager.resolveSourceConfig(this, db)
             val todayStorage = DateStorageUtils.todayStorageDate()
             val todaySortable = DateStorageUtils.toSortable(todayStorage) ?: "20260416"
-            
-            // Expression SQL pour convertir ddMMyyyy en yyyyMMdd
-            val orderExpr = "SUBSTR($futureDateColumn, 5) || SUBSTR($futureDateColumn, 3, 2) || SUBSTR($futureDateColumn, 1, 2)"
+            val orderExpr = if (futureSource.isStorageDate) {
+                "SUBSTR(${futureSource.dateColumn}, 5) || SUBSTR(${futureSource.dateColumn}, 3, 2) || SUBSTR(${futureSource.dateColumn}, 1, 2)"
+            } else {
+                futureSource.dateColumn
+            }
 
             val cursor = if (searchQuery.isBlank()) {
-                db.rawQuery(
-                    """SELECT id, nom_plat, id_personnes, $futureDateColumn, description
-                       FROM future_repas
-                       WHERE $futureDateColumn IS NOT NULL AND TRIM($futureDateColumn) != ''
-                         AND $orderExpr >= ?
-                       ORDER BY $orderExpr ASC""",
-                    arrayOf(todaySortable)
-                )
+                if (futureSource.isStorageDate) {
+                    db.rawQuery(
+                        """SELECT id, nom_plat, id_personnes, ${futureSource.dateColumn}, description
+                           FROM ${futureSource.tableName}
+                           WHERE ${futureSource.dateColumn} IS NOT NULL AND TRIM(${futureSource.dateColumn}) != ''
+                             AND $orderExpr >= ?
+                           ORDER BY $orderExpr ASC""",
+                        arrayOf(todaySortable)
+                    )
+                } else {
+                    db.rawQuery(
+                        """SELECT id, nom_plat, id_personnes, ${futureSource.dateColumn}, description
+                           FROM ${futureSource.tableName}
+                           WHERE ${futureSource.dateColumn} > 0
+                           ORDER BY ${futureSource.dateColumn} ASC""",
+                        null
+                    )
+                }
             } else {
                 val likeSearch = "%${searchQuery.lowercase()}%"
-                db.rawQuery(
-                    """SELECT id, nom_plat, id_personnes, $futureDateColumn, description
-                       FROM future_repas
-                       WHERE $futureDateColumn IS NOT NULL AND TRIM($futureDateColumn) != ''
-                         AND $orderExpr >= ?
-                          AND (LOWER(nom_plat) LIKE ? OR LOWER(IFNULL(description, '')) LIKE ?)
-                       ORDER BY $orderExpr ASC""",
-                    arrayOf(todaySortable, likeSearch, likeSearch)
-                )
+                if (futureSource.isStorageDate) {
+                    db.rawQuery(
+                        """SELECT id, nom_plat, id_personnes, ${futureSource.dateColumn}, description
+                           FROM ${futureSource.tableName}
+                           WHERE ${futureSource.dateColumn} IS NOT NULL AND TRIM(${futureSource.dateColumn}) != ''
+                             AND $orderExpr >= ?
+                             AND (LOWER(nom_plat) LIKE ? OR LOWER(IFNULL(description, '')) LIKE ?)
+                           ORDER BY $orderExpr ASC""",
+                        arrayOf(todaySortable, likeSearch, likeSearch)
+                    )
+                } else {
+                    db.rawQuery(
+                        """SELECT id, nom_plat, id_personnes, ${futureSource.dateColumn}, description
+                           FROM ${futureSource.tableName}
+                           WHERE ${futureSource.dateColumn} > 0
+                             AND (LOWER(nom_plat) LIKE ? OR LOWER(IFNULL(description, '')) LIKE ?)
+                           ORDER BY ${futureSource.dateColumn} ASC""",
+                        arrayOf(likeSearch, likeSearch)
+                    )
+                }
             }
 
             if (cursor.moveToFirst()) {
@@ -141,6 +197,8 @@ class FutureRecettesActivity : AppCompatActivity() {
             cursor.close()
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        } finally {
+            swipeRefresh.isRefreshing = false
         }
     }
 
@@ -196,6 +254,7 @@ class FutureRecettesActivity : AppCompatActivity() {
             } else {
                 startActivity(Intent(this, FutureRecetteDetailActivity::class.java).apply {
                     putExtra("FUTURE_ID", futureId)
+                    putExtra("SOURCE_MODE", sourceConfig?.isExternalMode?.let { if (it) 1 else 0 } ?: 0)
                 })
             }
         }
@@ -231,6 +290,7 @@ class FutureRecettesActivity : AppCompatActivity() {
             when (item.itemId) {
                 1 -> startActivity(Intent(this, AddEditFutureRecetteActivity::class.java).apply {
                     putExtra("FUTURE_ID", futureId)
+                    putExtra("SOURCE_MODE", sourceConfig?.isExternalMode?.let { if (it) 1 else 0 } ?: 0)
                 })
                 2 -> confirmDeleteOne(futureId)
             }
@@ -245,10 +305,11 @@ class FutureRecettesActivity : AppCompatActivity() {
             .setMessage("Cette action est irréversible.")
             .setPositiveButton("Supprimer") { _, _ ->
                 try {
-                    FutureReminderScheduler.cancelFutureReminders(this@FutureRecettesActivity, futureId, deleteRows = true)
-                    dbHelper.getDatabase().delete("future_repas", "id = ?", arrayOf(futureId.toString()))
-                    container.removeAllViews()
-                    loadFutureRepas()
+                    val db = dbHelper.getDatabase()
+                    val sourceMode = sourceConfig?.isExternalMode?.let { if (it) 1 else 0 } ?: 0
+                    FutureReminderScheduler.cancelMealReminders(this@FutureRecettesActivity, futureId, sourceMode, deleteRows = true)
+                    db.delete(sourceConfig?.tableName ?: "future_repas", "id = ?", arrayOf(futureId.toString()))
+                    reloadFutureRepas()
                 } catch (e: SQLiteException) {
                     Toast.makeText(this, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
                 }
@@ -268,9 +329,10 @@ class FutureRecettesActivity : AppCompatActivity() {
             .setPositiveButton("Supprimer") { _, _ ->
                 try {
                     val db = dbHelper.getDatabase()
+                    val sourceMode = sourceConfig?.isExternalMode?.let { if (it) 1 else 0 } ?: 0
                     selectedIds.forEach { id ->
-                        FutureReminderScheduler.cancelFutureReminders(this@FutureRecettesActivity, id, deleteRows = true)
-                        db.delete("future_repas", "id = ?", arrayOf(id.toString()))
+                        FutureReminderScheduler.cancelMealReminders(this@FutureRecettesActivity, id, sourceMode, deleteRows = true)
+                        db.delete(sourceConfig?.tableName ?: "future_repas", "id = ?", arrayOf(id.toString()))
                     }
                     Toast.makeText(this, "${selectedIds.size} recette(s) supprimée(s)", Toast.LENGTH_SHORT).show()
                     exitSelectionMode()
@@ -300,7 +362,3 @@ class FutureRecettesActivity : AppCompatActivity() {
         } catch (_: SQLiteException) { "?" }
     }
 }
-
-
-
-

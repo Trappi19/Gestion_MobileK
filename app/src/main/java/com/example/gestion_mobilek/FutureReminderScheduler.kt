@@ -25,11 +25,14 @@ object FutureReminderScheduler {
 
     private const val SNOOZE_DELAY_MS = 60 * 60 * 1000L
 
-    private fun alarmIntent(context: Context, reminderId: Int, futureId: Int): PendingIntent {
+    private fun reminderDb(context: Context) = DatabaseHelper(context).getDatabaseForMode(false)
+
+    private fun alarmIntent(context: Context, reminderId: Int, mealId: Int, sourceMode: Int): PendingIntent {
         val intent = Intent(context, FutureReminderReceiver::class.java).apply {
             action = ACTION_TRIGGER
             putExtra(EXTRA_REMINDER_ID, reminderId)
-            putExtra(EXTRA_FUTURE_ID, futureId)
+            putExtra(EXTRA_FUTURE_ID, mealId)
+            putExtra("EXTRA_SOURCE_MODE", sourceMode)
         }
         return PendingIntent.getBroadcast(
             context,
@@ -39,11 +42,12 @@ object FutureReminderScheduler {
         )
     }
 
-    private fun actionIntent(context: Context, action: String, reminderId: Int, futureId: Int): PendingIntent {
+    private fun actionIntent(context: Context, action: String, reminderId: Int, mealId: Int, sourceMode: Int): PendingIntent {
         val intent = Intent(context, FutureReminderReceiver::class.java).apply {
             this.action = action
             putExtra(EXTRA_REMINDER_ID, reminderId)
-            putExtra(EXTRA_FUTURE_ID, futureId)
+            putExtra(EXTRA_FUTURE_ID, mealId)
+            putExtra("EXTRA_SOURCE_MODE", sourceMode)
         }
         val requestCode = reminderId * 10 + when (action) {
             ACTION_DISMISS -> 1
@@ -58,13 +62,14 @@ object FutureReminderScheduler {
         )
     }
 
-    private fun detailIntent(context: Context, futureId: Int): PendingIntent {
+    private fun detailIntent(context: Context, mealId: Int, sourceMode: Int): PendingIntent {
         val intent = Intent(context, FutureRecetteDetailActivity::class.java).apply {
-            putExtra("FUTURE_ID", futureId)
+            putExtra("FUTURE_ID", mealId)
+            putExtra("SOURCE_MODE", sourceMode)
         }
         return PendingIntent.getActivity(
             context,
-            futureId,
+            mealId * 31 + sourceMode,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -87,13 +92,13 @@ object FutureReminderScheduler {
     }
 
     fun scheduleReminder(context: Context, reminder: FutureReminderStore.ReminderEntry) {
-        val db = DatabaseHelper(context).getDatabase()
+        val db = reminderDb(context)
         val saved = FutureReminderStore.loadById(db, reminder.id) ?: return
         if (!saved.enabled) return
         if (saved.triggerAtMillis <= System.currentTimeMillis()) return
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val pendingIntent = alarmIntent(context, saved.id, saved.futureId)
+        val pendingIntent = alarmIntent(context, saved.id, saved.mealId, saved.sourceMode)
 
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
@@ -106,25 +111,27 @@ object FutureReminderScheduler {
         }
     }
 
-    fun scheduleForFuture(context: Context, futureId: Int) {
-        val db = DatabaseHelper(context).getDatabase()
-        val entries = FutureReminderStore.loadForFuture(db, futureId)
+    fun scheduleForMeal(context: Context, mealId: Int, sourceMode: Int) {
+        val db = reminderDb(context)
+        val entries = FutureReminderStore.loadForMeal(db, mealId, sourceMode)
         entries.forEach { scheduleReminder(context, it) }
     }
 
     fun rescheduleAll(context: Context) {
-        val db = DatabaseHelper(context).getDatabase()
+        val db = reminderDb(context)
         FutureReminderStore.loadAllEnabled(db).forEach { scheduleReminder(context, it) }
     }
 
     fun cancelReminder(context: Context, reminderId: Int) {
-        val db = DatabaseHelper(context).getDatabase()
+        val db = reminderDb(context)
         val reminder = FutureReminderStore.loadById(db, reminderId)
-        val futureId = reminder?.futureId ?: 0
+        val mealId = reminder?.mealId ?: 0
+        val sourceMode = reminder?.sourceMode ?: 0
         val intent = Intent(context, FutureReminderReceiver::class.java).apply {
             action = ACTION_TRIGGER
             putExtra(EXTRA_REMINDER_ID, reminderId)
-            putExtra(EXTRA_FUTURE_ID, futureId)
+            putExtra(EXTRA_FUTURE_ID, mealId)
+            putExtra("EXTRA_SOURCE_MODE", sourceMode)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -137,17 +144,17 @@ object FutureReminderScheduler {
         NotificationManagerCompat.from(context).cancel(reminderId)
     }
 
-    fun cancelFutureReminders(context: Context, futureId: Int, deleteRows: Boolean) {
-        val db = DatabaseHelper(context).getDatabase()
-        val reminders = FutureReminderStore.loadForFuture(db, futureId)
+    fun cancelMealReminders(context: Context, mealId: Int, sourceMode: Int, deleteRows: Boolean) {
+        val db = reminderDb(context)
+        val reminders = FutureReminderStore.loadForMeal(db, mealId, sourceMode)
         reminders.forEach { cancelReminder(context, it.id) }
         if (deleteRows) {
-            FutureReminderStore.deleteForFuture(db, futureId)
+            FutureReminderStore.deleteForMeal(db, mealId, sourceMode)
         }
     }
 
     fun snoozeReminder(context: Context, reminderId: Int) {
-        val db = DatabaseHelper(context).getDatabase()
+        val db = reminderDb(context)
         val reminder = FutureReminderStore.loadById(db, reminderId) ?: return
         val snoozedTime = System.currentTimeMillis() + SNOOZE_DELAY_MS
         FutureReminderStore.updateReminderTime(db, reminderId, snoozedTime)
@@ -156,22 +163,26 @@ object FutureReminderScheduler {
 
     fun dismissReminder(context: Context, reminderId: Int) {
         cancelReminder(context, reminderId)
-        val db = DatabaseHelper(context).getDatabase()
+        val db = reminderDb(context)
         FutureReminderStore.deleteReminder(db, reminderId)
     }
 
     fun showNotification(context: Context, reminderId: Int) {
         ensureChannel(context)
         if (!SettingsStore.areReminderNotificationsEnabled(context)) return
-        val db = DatabaseHelper(context).getDatabase()
+        val db = reminderDb(context)
         val reminder = FutureReminderStore.loadById(db, reminderId) ?: return
         if (!reminder.enabled) return
 
-        val payload = FutureReminderFormatter.buildPayload(context, reminder.futureId, reminder.triggerAtMillis)
-            ?: run {
-                dismissReminder(context, reminderId)
-                return
-            }
+        val payload = FutureReminderFormatter.buildPayload(
+            context,
+            reminder.sourceMode,
+            reminder.mealId,
+            reminder.triggerAtMillis
+        ) ?: run {
+            dismissReminder(context, reminderId)
+            return
+        }
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -181,22 +192,19 @@ object FutureReminderScheduler {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
-            .setContentIntent(detailIntent(context, reminder.futureId))
+            .setContentIntent(detailIntent(context, reminder.mealId, reminder.sourceMode))
             .addAction(
                 android.R.drawable.ic_menu_close_clear_cancel,
                 context.getString(R.string.future_reminder_ignore),
-                actionIntent(context, ACTION_DISMISS, reminder.id, reminder.futureId)
+                actionIntent(context, ACTION_DISMISS, reminder.id, reminder.mealId, reminder.sourceMode)
             )
             .addAction(
                 android.R.drawable.ic_menu_recent_history,
                 context.getString(R.string.future_reminder_snooze_1h),
-                actionIntent(context, ACTION_SNOOZE, reminder.id, reminder.futureId)
+                actionIntent(context, ACTION_SNOOZE, reminder.id, reminder.mealId, reminder.sourceMode)
             )
             .build()
 
         NotificationManagerCompat.from(context).notify(reminder.id, notification)
     }
 }
-
-
-

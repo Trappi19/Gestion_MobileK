@@ -22,8 +22,10 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
     private var futureId: Int = -1
+    private var sourceMode: Int = 0
     private var selectedDateStorage: String? = null
-    private var futureDateColumn: String = "date_dernier_repas"
+    private var sourceTable: String = "future_repas"
+    private var sourceDateColumn: String = "date_dernier_repas"
     private val selectedPersonIds = mutableSetOf<Int>()
     private val selectedPlats = mutableSetOf<String>()
     private val reminderDrafts = mutableListOf<ReminderDraft>()
@@ -40,12 +42,16 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
 
         dbHelper = DatabaseHelper(this)
         futureId = intent.getIntExtra("FUTURE_ID", -1)
+        sourceMode = intent.getIntExtra("SOURCE_MODE", if (SettingsStore.isExternalDataSourceEnabled(this)) 1 else 0)
 
         try {
-            val db = dbHelper.getDatabase()
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
             FutureRecettesManager.ensureSchema(db)
-            futureDateColumn = resolveFutureDateColumn(db)
-            FutureReminderStore.ensureSchema(db)
+            val sourceConfig = FutureRecettesManager.resolveSourceConfig(this, db)
+            
+            sourceTable = sourceConfig.tableName
+            sourceDateColumn = sourceConfig.dateColumn
+            FutureReminderStore.ensureSchema(dbHelper.getDatabaseForMode(false))
         } catch (_: SQLiteException) {
         }
 
@@ -101,9 +107,9 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
 
     private fun loadExistingData(tvDate: TextView) {
         try {
-            val db = dbHelper.getDatabase()
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
             val cursor = db.rawQuery(
-                "SELECT nom_plat, id_personnes, $futureDateColumn, description FROM future_repas WHERE id = ?",
+                "SELECT nom_plat, id_personnes, $sourceDateColumn, description FROM $sourceTable WHERE id = ?",
                 arrayOf(futureId.toString())
             )
             if (cursor.moveToFirst()) {
@@ -131,10 +137,10 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
 
     private fun loadExistingReminders() {
         try {
-            val db = dbHelper.getDatabase()
+            val db = dbHelper.getDatabaseForMode(false)
             reminderDrafts.clear()
             reminderDrafts.addAll(
-                FutureReminderStore.loadForFuture(db, futureId)
+                FutureReminderStore.loadForMeal(db, futureId, sourceMode)
                     .map { ReminderDraft(it.triggerAtMillis) }
             )
             remindersEnabled = reminderDrafts.isNotEmpty()
@@ -283,7 +289,7 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
 
     private fun showPersonsPicker() {
         try {
-            val db = dbHelper.getDatabase()
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
             val options = mutableListOf<PersonOption>()
 
             db.rawQuery("SELECT id, nom FROM personnes ORDER BY nom", null).use { c ->
@@ -327,7 +333,7 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
 
     private fun showPlatsPicker() {
         try {
-            val db = dbHelper.getDatabase()
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
             val plats = mutableListOf<String>()
 
             db.rawQuery("SELECT nom_plat FROM plats ORDER BY nom_plat", null).use { c ->
@@ -382,7 +388,7 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
 
         val names = mutableListOf<String>()
         try {
-            val db = dbHelper.getDatabase()
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
             selectedPersonIds.forEach { id ->
                 val c = db.rawQuery("SELECT nom FROM personnes WHERE id = ?", arrayOf(id.toString()))
                 if (c.moveToFirst()) names.add(c.getString(0) ?: "#${id}")
@@ -454,10 +460,11 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
         }
 
         try {
-            val db = dbHelper.getDatabase()
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
+            val reminderDb = dbHelper.getDatabaseForMode(false)
             val isUpdate = futureId > 0
             if (isUpdate) {
-                FutureReminderScheduler.cancelFutureReminders(this, futureId, deleteRows = false)
+                FutureReminderScheduler.cancelMealReminders(this, futureId, sourceMode, deleteRows = false)
             }
             db.beginTransaction()
             val savedFutureId: Int
@@ -465,24 +472,24 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
                 val values = ContentValues().apply {
                     put("nom_plat", selectedPlats.joinToString(","))
                     put("id_personnes", selectedPersonIds.joinToString(","))
-                    put(futureDateColumn, dateStorage)
+                    put(sourceDateColumn, dateStorage)
                     put("description", description)
                 }
 
                 savedFutureId = if (futureId > 0) {
-                    db.update("future_repas", values, "id = ?", arrayOf(futureId.toString()))
+                    db.update(sourceTable, values, "id = ?", arrayOf(futureId.toString()))
                     futureId
                 } else {
-                    val newId = db.insert("future_repas", null, values)
+                    val newId = db.insert(sourceTable, null, values)
                     if (newId <= 0) throw SQLiteException("Impossible de créer la future recette")
                     futureId = newId.toInt()
                     futureId
                 }
 
                 if (remindersEnabled) {
-                    FutureReminderStore.replaceForFuture(db, savedFutureId, reminderDrafts.map { it.triggerAtMillis })
+                    FutureReminderStore.replaceForMeal(reminderDb, savedFutureId, sourceMode, reminderDrafts.map { it.triggerAtMillis })
                 } else {
-                    FutureReminderStore.deleteForFuture(db, savedFutureId)
+                    FutureReminderStore.deleteForMeal(reminderDb, savedFutureId, sourceMode)
                 }
 
                 db.setTransactionSuccessful()
@@ -490,7 +497,7 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
                 db.endTransaction()
             }
 
-            FutureReminderScheduler.scheduleForFuture(this, savedFutureId)
+            FutureReminderScheduler.scheduleForMeal(this, savedFutureId, sourceMode)
             Toast.makeText(this, if (isUpdate) "Recette mise à jour" else "Recette planifiée", Toast.LENGTH_SHORT).show()
             finish()
         } catch (e: SQLiteException) {
@@ -545,4 +552,3 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
         }
     }
 }
-

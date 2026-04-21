@@ -34,13 +34,15 @@ object FutureReminderFormatter {
         return formatter.format(Date(millis))
     }
 
-    fun buildPayload(context: Context, futureId: Int, reminderAtMillis: Long): NotificationPayload? {
+    fun buildPayload(context: Context, sourceMode: Int, mealId: Int, reminderAtMillis: Long): NotificationPayload? {
         return try {
-            val db = DatabaseHelper(context).getDatabase()
-            val dateColumn = FutureRecettesManager.resolveDateColumn(db)
+            val db = DatabaseHelper(context).getDatabaseForMode(sourceMode != 0)
+            val sourceTable = if (sourceMode != 0) "repas" else "future_repas"
+            val dateColumn = if (sourceMode != 0) RepasDateCompat.resolve(db).columnName else FutureRecettesManager.resolveDateColumn(db)
+
             db.rawQuery(
-                "SELECT nom_plat, id_personnes, $dateColumn FROM future_repas WHERE id = ?",
-                arrayOf(futureId.toString())
+                "SELECT nom_plat, id_personnes, $dateColumn FROM $sourceTable WHERE id = ?",
+                arrayOf(mealId.toString())
             ).use { cursor ->
                 if (!cursor.moveToFirst()) return null
 
@@ -72,5 +74,4 @@ object FutureReminderFormatter {
         }
     }
 }
-
 

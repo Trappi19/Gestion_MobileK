@@ -59,7 +59,22 @@ object ExternalMariaDbSync {
         "future_repas",
         "future_repas_rappels"
     )
+    private val optionalRemoteTables = setOf("future_repas", "future_repas_rappels")
+    private val requiredRemoteTables = syncTables.toSet() - optionalRemoteTables
     private val coreTables = setOf("personnes", "gouts", "plats")
+    private val tableAliases = mapOf(
+        "ingrédient" to listOf("ingredient", "ingredients", "ingrdient"),
+        "plats" to listOf("plat"),
+        "future_repas" to listOf("future_recette", "future_recettes", "futur_repas", "futurs_repas"),
+        "future_repas_rappels" to listOf("future_rappels", "rappels_future_repas", "future_recette_rappels", "rappels_future_recettes")
+    )
+    private val columnAliases = mapOf(
+        "nom_plat" to listOf("nom", "plat"),
+        "nom_ingredient" to listOf("nom", "ingredient"),
+        "date_dernier_repas" to listOf("date_repas"),
+        "date_repas" to listOf("date_dernier_repas"),
+        "id_personnes" to listOf("id_personne", "personnes", "ids_personnes")
+    )
 
     private fun escapeIdent(name: String): String = "`" + name.replace("`", "``") + "`"
 
@@ -161,7 +176,19 @@ object ExternalMariaDbSync {
     private fun resolveRemoteTableName(localTable: String, remoteNames: Set<String>): String? {
         if (remoteNames.contains(localTable)) return localTable
         val normalizedLocal = normalizeTableName(localTable)
-        return remoteNames.firstOrNull { normalizeTableName(it).equals(normalizedLocal, ignoreCase = true) }
+
+        remoteNames.firstOrNull { normalizeTableName(it).equals(normalizedLocal, ignoreCase = true) }?.let {
+            return it
+        }
+
+        val candidates = listOf(localTable) + tableAliases[localTable].orEmpty()
+        candidates.forEach { candidate ->
+            val normalizedCandidate = normalizeTableName(candidate)
+            remoteNames.firstOrNull { normalizeTableName(it).equals(normalizedCandidate, ignoreCase = true) }?.let {
+                return it
+            }
+        }
+        return null
     }
 
     private fun remoteTableColumns(connection: Connection, dbName: String, tableName: String): Set<String> {
@@ -180,15 +207,36 @@ object ExternalMariaDbSync {
     }
 
     private fun resolveRemoteColumnName(localColumn: String, remoteColumns: Set<String>): String? {
-        if (remoteColumns.contains(localColumn)) return localColumn
-        val normalized = normalizeTableName(localColumn)
-        return remoteColumns.firstOrNull { normalizeTableName(it).equals(normalized, ignoreCase = true) }
+        val candidates = listOf(localColumn) + columnAliases[localColumn].orEmpty()
+        candidates.forEach { candidate ->
+            if (remoteColumns.contains(candidate)) return candidate
+            val normalized = normalizeTableName(candidate)
+            remoteColumns.firstOrNull { normalizeTableName(it).equals(normalized, ignoreCase = true) }?.let {
+                return it
+            }
+        }
+        return null
     }
 
     private fun resolveLocalColumnName(remoteColumn: String, localColumns: List<String>): String? {
         if (localColumns.contains(remoteColumn)) return remoteColumn
+        localColumns.firstOrNull { localColumn ->
+            val localCandidates = listOf(localColumn) + columnAliases[localColumn].orEmpty()
+            localCandidates.any { candidate ->
+                normalizeTableName(candidate).equals(normalizeTableName(remoteColumn), ignoreCase = true)
+            }
+        }?.let {
+            return it
+        }
+
         val normalized = normalizeTableName(remoteColumn)
         return localColumns.firstOrNull { normalizeTableName(it).equals(normalized, ignoreCase = true) }
+    }
+
+    private fun localTableHasData(sqliteDb: SQLiteDatabase, table: String): Boolean {
+        return runCatching {
+            sqliteDb.rawQuery("SELECT 1 FROM ${escapeIdent(table)} LIMIT 1", null).use { it.moveToFirst() }
+        }.getOrDefault(false)
     }
 
     private fun mapTableDiagnostic(
@@ -319,6 +367,19 @@ object ExternalMariaDbSync {
         return cols
     }
 
+    private fun getLocalPrimaryKey(sqliteDb: SQLiteDatabase, table: String): String? {
+        sqliteDb.rawQuery("PRAGMA table_info(${escapeIdent(table)})", null).use { c ->
+            val numIdx = c.getColumnIndex("pk")
+            val nameIdx = c.getColumnIndex("name")
+            if (numIdx >= 0 && nameIdx >= 0 && c.moveToFirst()) {
+                do {
+                    if (c.getInt(numIdx) > 0) return c.getString(nameIdx)
+                } while (c.moveToNext())
+            }
+        }
+        return null
+    }
+
     private fun resultSetValueToContent(values: ContentValues, column: String, raw: Any?) {
         when (raw) {
             null -> values.putNull(column)
@@ -353,10 +414,12 @@ object ExternalMariaDbSync {
 
         val sqlColumns = mappedColumns.joinToString(", ") { (_, remoteColumn) -> escapeIdent(remoteColumn) }
         val query = "SELECT $sqlColumns FROM ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)}"
+        val localPk = getLocalPrimaryKey(sqliteDb, localTable)
 
         sqliteDb.beginTransaction()
         try {
             sqliteDb.delete(localTable, null, null)
+            sqliteDb.delete("_sync_history", "table_name = ?", arrayOf(localTable))
 
             remoteConn.createStatement().use { st ->
                 st.executeQuery(query).use { rs ->
@@ -366,6 +429,17 @@ object ExternalMariaDbSync {
                             resultSetValueToContent(values, localColumn, rs.getObject(index + 1))
                         }
                         sqliteDb.insert(localTable, null, values)
+                        
+                        if (localPk != null) {
+                            val pkVal = values.getAsString(localPk)
+                            if (pkVal != null) {
+                                val h = ContentValues().apply {
+                                    put("table_name", localTable)
+                                    put("pk_val", pkVal)
+                                }
+                                sqliteDb.insert("_sync_history", null, h)
+                            }
+                        }
                     }
                 }
             }
@@ -403,12 +477,76 @@ object ExternalMariaDbSync {
                 localColumn to remoteColumn
             }
         }
-        if (mappedColumns.isEmpty()) return false
+        if (mappedColumns.isEmpty()) {
+            if (localTableHasData(sqliteDb, localTable)) {
+                throw SQLException(
+                    "Aucune colonne compatible pour pousser '$localTable' vers '$remoteTable'"
+                )
+            }
+            return false
+        }
+
+        val localPk = getLocalPrimaryKey(sqliteDb, localTable)
+        val remotePkMapping = if (localPk != null) mappedColumns.find { it.first == localPk } else null
+
+        if (localPk != null && remotePkMapping != null) {
+            val remotePk = remotePkMapping.second
+            val localIds = mutableSetOf<String>()
+            sqliteDb.rawQuery("SELECT ${escapeIdent(localPk)} FROM ${escapeIdent(localTable)}", null).use { c ->
+                if (c.moveToFirst()) {
+                    do {
+                        localIds.add(c.getString(0))
+                    } while (c.moveToNext())
+                }
+            }
+
+            val historyIds = mutableSetOf<String>()
+            sqliteDb.rawQuery("SELECT pk_val FROM _sync_history WHERE table_name = ?", arrayOf(localTable)).use { c ->
+                if (c.moveToFirst()) {
+                    do {
+                        historyIds.add(c.getString(0))
+                    } while (c.moveToNext())
+                }
+            }
+
+            val deletedIds = historyIds - localIds
+            if (deletedIds.isNotEmpty()) {
+                val inClause = deletedIds.joinToString(",") { "?" }
+                val delSql = "DELETE FROM ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)} WHERE ${escapeIdent(remotePk)} IN ($inClause)"
+                remoteConn.prepareStatement(delSql).use { ps ->
+                    var idx = 1
+                    deletedIds.forEach { id ->
+                        ps.setString(idx++, id)
+                    }
+                    ps.executeUpdate()
+                }
+            }
+            
+            sqliteDb.delete("_sync_history", "table_name = ?", arrayOf(localTable))
+            sqliteDb.beginTransaction()
+            try {
+                localIds.forEach { id ->
+                    val h = ContentValues().apply {
+                        put("table_name", localTable)
+                        put("pk_val", id)
+                    }
+                    sqliteDb.insert("_sync_history", null, h)
+                }
+                sqliteDb.setTransactionSuccessful()
+            } finally {
+                sqliteDb.endTransaction()
+            }
+        }
 
         val escapedColumns = mappedColumns.joinToString(", ") { (_, remoteColumn) -> escapeIdent(remoteColumn) }
         val placeholders = mappedColumns.joinToString(", ") { "?" }
         val selectColumns = mappedColumns.joinToString(", ") { (localColumn, _) -> escapeIdent(localColumn) }
-        val insertSql = "INSERT INTO ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)} ($escapedColumns) VALUES ($placeholders)"
+        
+        val updateClause = mappedColumns.joinToString(", ") { (_, remoteColumn) -> 
+            "${escapeIdent(remoteColumn)} = VALUES(${escapeIdent(remoteColumn)})"
+        }
+        
+        val insertSql = "INSERT INTO ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)} ($escapedColumns) VALUES ($placeholders) ON DUPLICATE KEY UPDATE $updateClause"
         val selectSql = "SELECT $selectColumns FROM ${escapeIdent(localTable)}"
 
         try {
@@ -434,24 +572,6 @@ object ExternalMariaDbSync {
             )
         }
         return true
-    }
-
-    private fun clearRemoteTable(
-        remoteConn: Connection,
-        databaseName: String,
-        remoteTable: String
-    ) {
-        val deleteSql = "DELETE FROM ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)}"
-        try {
-            remoteConn.createStatement().use { it.executeUpdate(deleteSql) }
-        } catch (e: SQLException) {
-            throw SQLException(
-                "Echec suppression table distante '$remoteTable' : ${e.message}",
-                e.sqlState,
-                e.errorCode,
-                e
-            )
-        }
     }
 
     fun connectAndPull(context: Context): Result<String> {
@@ -497,6 +617,16 @@ object ExternalMariaDbSync {
                     FutureRecettesManager.ensureSchema(sqliteDb)
                     val remoteNames = remoteTableNames(dbConn, dbName)
 
+                    val unresolvedWithData = syncTables.filter { localTable ->
+                        resolveRemoteTableName(localTable, remoteNames) == null && localTableHasData(sqliteDb, localTable)
+                    }
+                    val unresolvedRequiredWithData = unresolvedWithData.filter { it in requiredRemoteTables }
+                    if (unresolvedRequiredWithData.isNotEmpty()) {
+                        throw SQLException(
+                            "Tables distantes requises manquantes pour donnees locales: ${unresolvedRequiredWithData.joinToString(", ")}"
+                        )
+                    }
+
                     val resolvedTables = syncTables.mapNotNull { localTable ->
                         resolveRemoteTableName(localTable, remoteNames)?.let { remoteTable ->
                             ResolvedTable(localTable = localTable, remoteTable = remoteTable)
@@ -507,9 +637,9 @@ object ExternalMariaDbSync {
                     }
 
                     // Delete children first to satisfy foreign keys, then insert parents first.
-                    resolvedTables.asReversed().forEach { table ->
-                        clearRemoteTable(dbConn, dbName, table.remoteTable)
-                    }
+                    // resolvedTables.asReversed().forEach { table ->
+                    //     clearRemoteTable(dbConn, dbName, table.remoteTable)
+                    // }
 
                     var pushed = 0
                     resolvedTables.forEach { table ->
@@ -532,6 +662,10 @@ object ExternalMariaDbSync {
         }
     }
 }
+
+
+
+
 
 
 

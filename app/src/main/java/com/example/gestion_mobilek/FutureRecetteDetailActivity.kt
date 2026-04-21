@@ -19,7 +19,9 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
     private var futureId: Int = -1
-    private var futureDateColumn: String = FutureRecettesManager.NEW_DATE_COL
+    private var sourceMode: Int = 0
+    private var sourceTable: String = "future_repas"
+    private var sourceDateColumn: String = FutureRecettesManager.NEW_DATE_COL
     private var currentDescription: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,8 +30,12 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
 
         dbHelper = DatabaseHelper(this)
         futureId = intent.getIntExtra("FUTURE_ID", -1)
+        sourceMode = intent.getIntExtra("SOURCE_MODE", if (SettingsStore.isExternalDataSourceEnabled(this)) 1 else 0)
         try {
-            futureDateColumn = FutureRecettesManager.resolveDateColumn(dbHelper.getDatabase())
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
+            val sourceConfig = FutureRecettesManager.resolveSourceConfig(this, db)
+            sourceTable = sourceConfig.tableName
+            sourceDateColumn = sourceConfig.dateColumn
         } catch (_: SQLiteException) {
         }
 
@@ -38,6 +44,7 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
             if (futureId <= 0) return@setOnClickListener
             startActivity(Intent(this, AddEditFutureRecetteActivity::class.java).apply {
                 putExtra("FUTURE_ID", futureId)
+                putExtra("SOURCE_MODE", sourceMode)
             })
         }
         findViewById<ImageButton>(R.id.btnDelete).setOnClickListener {
@@ -62,10 +69,13 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
         }
 
         try {
-            val db = dbHelper.getDatabase()
-            futureDateColumn = FutureRecettesManager.resolveDateColumn(db)
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
+            val sourceConfig = FutureRecettesManager.resolveSourceConfig(this, db)
+            sourceTable = sourceConfig.tableName
+            sourceDateColumn = sourceConfig.dateColumn
+            
             val c = db.rawQuery(
-                "SELECT nom_plat, id_personnes, $futureDateColumn, description FROM future_repas WHERE id = ?",
+                "SELECT nom_plat, id_personnes, $sourceDateColumn, description FROM $sourceTable WHERE id = ?",
                 arrayOf(futureId.toString())
             )
 
@@ -139,7 +149,7 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
     private fun saveDescription(newValue: String) {
         try {
             val values = ContentValues().apply { put("description", newValue) }
-            dbHelper.getDatabase().update("future_repas", values, "id = ?", arrayOf(futureId.toString()))
+            dbHelper.getDatabaseForMode(sourceMode != 0).update(sourceTable, values, "id = ?", arrayOf(futureId.toString()))
             currentDescription = newValue
             loadDetail()
             Toast.makeText(this, "Description mise a jour", Toast.LENGTH_SHORT).show()
@@ -158,7 +168,7 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
         }
 
         try {
-            val db = dbHelper.getDatabase()
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
             val ids = idPersonnes.split(",").map { it.trim() }.filter { it.isNotBlank() }
             if (ids.isEmpty()) {
                 addPersonRow(container, "Aucune personne", true)
@@ -198,8 +208,8 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
             .setMessage("Cette action est irréversible.")
             .setPositiveButton("Supprimer") { _, _ ->
                 try {
-                    FutureReminderScheduler.cancelFutureReminders(this@FutureRecetteDetailActivity, futureId, deleteRows = true)
-                    dbHelper.getDatabase().delete("future_repas", "id = ?", arrayOf(futureId.toString()))
+                    FutureReminderScheduler.cancelMealReminders(this@FutureRecetteDetailActivity, futureId, sourceMode, deleteRows = true)
+                    dbHelper.getDatabaseForMode(sourceMode != 0).delete(sourceTable, "id = ?", arrayOf(futureId.toString()))
                     Toast.makeText(this, "Recette supprimée", Toast.LENGTH_SHORT).show()
                     finish()
                 } catch (e: SQLiteException) {
@@ -210,5 +220,3 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
             .show()
     }
 }
-
-

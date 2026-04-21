@@ -15,11 +15,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 
 class ItemListActivity : AppCompatActivity() {
 
     private lateinit var dbHelper: DatabaseHelper
     private lateinit var container: LinearLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout
     private lateinit var type: String
 
     private var selectionMode = false
@@ -33,6 +35,10 @@ class ItemListActivity : AppCompatActivity() {
         type = intent.getStringExtra("TYPE") ?: "ingredient"
         dbHelper = DatabaseHelper(this)
         container = findViewById(R.id.containerItems)
+        swipeRefresh = findViewById(R.id.swipeRefreshItems)
+        swipeRefresh.setOnRefreshListener {
+            reloadItems()
+        }
 
         val title = if (type == "ingredient") "Ingrédients" else "Plats"
         findViewById<TextView>(R.id.tvTitle).text = title
@@ -59,8 +65,7 @@ class ItemListActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 searchQuery = s?.toString().orEmpty().trim()
-                container.removeAllViews()
-                loadItems()
+                reloadItems()
             }
             override fun afterTextChanged(s: Editable?) = Unit
         })
@@ -69,8 +74,7 @@ class ItemListActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         exitSelectionMode()
-        container.removeAllViews()
-        loadItems()
+        reloadItems()
     }
 
     // ─── MODE SÉLECTION ─────────────────────────────────────────────────────
@@ -80,8 +84,7 @@ class ItemListActivity : AppCompatActivity() {
         selectedNames.clear()
         findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.VISIBLE
         findViewById<ImageButton>(R.id.btnAdd).visibility = View.GONE
-        container.removeAllViews()
-        loadItems()
+        reloadItems()
     }
 
     private fun exitSelectionMode() {
@@ -89,8 +92,7 @@ class ItemListActivity : AppCompatActivity() {
         selectedNames.clear()
         findViewById<ImageButton>(R.id.btnDeleteSelected).visibility = View.GONE
         findViewById<ImageButton>(R.id.btnAdd).visibility = View.VISIBLE
-        container.removeAllViews()
-        loadItems()
+        reloadItems()
     }
 
     private fun confirmDeleteSelected() {
@@ -235,6 +237,11 @@ class ItemListActivity : AppCompatActivity() {
 
     // ─── LISTE ──────────────────────────────────────────────────────────────
 
+    private fun reloadItems() {
+        container.removeAllViews()
+        loadItems()
+    }
+
     private fun loadItems() {
         try {
             val db = dbHelper.getDatabase()
@@ -265,6 +272,8 @@ class ItemListActivity : AppCompatActivity() {
             cursor.close()
         } catch (e: SQLiteException) {
             Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        } finally {
+            swipeRefresh.isRefreshing = false
         }
     }
 
@@ -360,8 +369,7 @@ class ItemListActivity : AppCompatActivity() {
                     } finally {
                         db.endTransaction()
                     }
-                    container.removeAllViews()
-                    loadItems()
+                    reloadItems()
                     Toast.makeText(this, "Mis à jour", Toast.LENGTH_SHORT).show()
                 } catch (e: SQLiteException) {
                     Toast.makeText(this, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
@@ -379,8 +387,7 @@ class ItemListActivity : AppCompatActivity() {
                 try {
                     val db = dbHelper.getDatabase()
                     deleteItemEverywhere(db, itemName)
-                    container.removeAllViews()
-                    loadItems()
+                    reloadItems()
                     Toast.makeText(this, "Supprimé", Toast.LENGTH_SHORT).show()
                 } catch (e: SQLiteException) {
                     Toast.makeText(this, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
