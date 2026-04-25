@@ -28,7 +28,6 @@
             </intent-filter>
         </activity>
 
-        <!-- AJOUTE ÇA -->
         <activity
             android:name=".ui.persons.PersonListActivity"
             android:exported="false" />
