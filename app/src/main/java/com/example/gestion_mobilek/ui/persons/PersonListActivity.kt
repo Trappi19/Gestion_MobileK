@@ -208,8 +208,8 @@ class PersonListActivity : AppCompatActivity() {
         }
 
         val popup = PopupMenu(this, anchor)
-        popup.menu.add(0, 1, 1, "Ajouter a une future recette")
-        popup.menu.add(0, 2, 2, "Voir les gouts ensembles")
+        popup.menu.add(0, 1, 1, "Prévoir un futur repas")
+        popup.menu.add(0, 2, 2, "Voir les goûts communs")
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> openAddFutureRecipeWithSelection()
