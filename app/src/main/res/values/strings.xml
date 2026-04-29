@@ -81,11 +81,12 @@
     <string name="db_config_user">Utilisateur</string>
     <string name="db_config_password">Mot de passe</string>
     <string name="db_config_password_saved">Mot de passe (déjà enregistré)</string>
-    <string name="db_config_database">Nom de la base</string>
-    <string name="db_config_database_hint">Nom exact de la base à créer ou à utiliser sur le serveur.</string>
+    <string name="db_config_database">Nom de la base (optionnel)</string>
+    <string name="db_config_database_hint">Laissez vide pour une détection automatique. Requis pour créer ou réinitialiser la base.</string>
     <string name="db_config_save">Enregistrer</string>
     <string name="db_config_saved">Paramètres de connexion enregistrés</string>
-    <string name="db_config_error_required">Hôte, port, utilisateur et nom de base sont requis</string>
+    <string name="db_config_error_required">Hôte, port et utilisateur sont requis</string>
+    <string name="db_dialog_init_button">Initialiser la base de données</string>
     <string name="db_init_title">Initialiser la base de données</string>
     <string name="db_init_confirm_message">Cette opération va créer toutes les tables nécessaires sur la base distante configurée. Continuer ?</string>
     <string name="db_init_checking">Vérification de la base distante…</string>

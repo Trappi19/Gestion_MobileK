@@ -98,9 +98,26 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:layout_marginBottom="16dp"
             android:text="@string/db_config_database_hint"
             android:textColor="#888888"
             android:textSize="12sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginBottom="12dp"
+            android:background="#E0E0E0" />
+
+        <Button
+            android:id="@+id/btnInitInDialog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#E05252"
+            android:text="@string/db_dialog_init_button"
+            android:textAllCaps="false"
+            android:textColor="@android:color/white"
+            app:cornerRadius="24dp" />
 
     </LinearLayout>
 

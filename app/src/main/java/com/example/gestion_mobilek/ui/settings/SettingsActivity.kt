@@ -24,7 +24,6 @@ import android.provider.Settings
 import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.CheckBox
-import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -201,6 +200,7 @@ class SettingsActivity : AppCompatActivity() {
         val etUser = view.findViewById<TextInputEditText>(R.id.etDbUser)
         val etPassword = view.findViewById<TextInputEditText>(R.id.etDbPassword)
         val etDatabase = view.findViewById<TextInputEditText>(R.id.etDbDatabase)
+        val btnInitInDialog = view.findViewById<Button>(R.id.btnInitInDialog)
 
         etHost.setText(SettingsStore.getDbHost(this) ?: com.example.gestion_mobilek.BuildConfig.MARIADB_HOST.trim())
         val currentPort = SettingsStore.getDbPort(this) ?: com.example.gestion_mobilek.BuildConfig.MARIADB_PORT.takeIf { it > 0 }
@@ -210,39 +210,57 @@ class SettingsActivity : AppCompatActivity() {
             SettingsStore.getDbNameOverride(this)
                 ?: com.example.gestion_mobilek.BuildConfig.MARIADB_DATABASE.trim()
         )
-        val hasStoredPassword = SettingsStore.getDbPassword(this) != null
-        if (hasStoredPassword) {
+        if (SettingsStore.getDbPassword(this) != null) {
             etPassword.setHint(R.string.db_config_password_saved)
         }
 
-        AlertDialog.Builder(this)
+        fun saveFields(): Boolean {
+            val host = etHost.text?.toString()?.trim() ?: ""
+            val portText = etPort.text?.toString()?.trim() ?: ""
+            val user = etUser.text?.toString()?.trim() ?: ""
+            val password = etPassword.text?.toString()
+            val database = etDatabase.text?.toString()?.trim()
+
+            val port = portText.toIntOrNull()
+            if (host.isBlank() || port == null || port <= 0 || user.isBlank()) {
+                Toast.makeText(this, getString(R.string.db_config_error_required), Toast.LENGTH_LONG).show()
+                return false
+            }
+
+            SettingsStore.setDbHost(this, host)
+            SettingsStore.setDbPort(this, port)
+            SettingsStore.setDbUser(this, user)
+            if (!password.isNullOrEmpty()) {
+                SettingsStore.setDbPassword(this, password)
+            }
+            SettingsStore.setDbNameOverride(this, database?.ifBlank { null })
+            return true
+        }
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.settings_edit_db_connection)
             .setView(view)
-            .setPositiveButton(R.string.db_config_save) { _, _ ->
-                val host = etHost.text?.toString()?.trim() ?: ""
-                val portText = etPort.text?.toString()?.trim() ?: ""
-                val user = etUser.text?.toString()?.trim() ?: ""
-                val password = etPassword.text?.toString()
-                val database = etDatabase.text?.toString()?.trim() ?: ""
-
-                val port = portText.toIntOrNull()
-                if (host.isBlank() || port == null || port <= 0 || user.isBlank() || database.isBlank()) {
-                    Toast.makeText(this, getString(R.string.db_config_error_required), Toast.LENGTH_LONG).show()
-                    return@setPositiveButton
-                }
-
-                SettingsStore.setDbHost(this, host)
-                SettingsStore.setDbPort(this, port)
-                SettingsStore.setDbUser(this, user)
-                if (!password.isNullOrEmpty()) {
-                    SettingsStore.setDbPassword(this, password)
-                }
-                SettingsStore.setDbNameOverride(this, database)
-
-                Toast.makeText(this, getString(R.string.db_config_saved), Toast.LENGTH_SHORT).show()
-            }
+            .setPositiveButton(R.string.db_config_save, null)
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (saveFields()) {
+                    Toast.makeText(this, getString(R.string.db_config_saved), Toast.LENGTH_SHORT).show()
+                    dialog.dismiss()
+                }
+            }
+        }
+
+        btnInitInDialog.setOnClickListener {
+            if (saveFields()) {
+                dialog.dismiss()
+                showInitDbConfirmDialog()
+            }
+        }
+
+        dialog.show()
     }
 
     private fun showInitDbConfirmDialog() {
