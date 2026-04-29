@@ -21,12 +21,15 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.view.LayoutInflater
 import android.widget.Button
 import android.widget.CheckBox
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.textfield.TextInputEditText
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -78,6 +81,12 @@ class SettingsActivity : AppCompatActivity() {
         }
         findViewById<Button>(R.id.btnLicense).setOnClickListener {
             showLicenseDialog()
+        }
+        findViewById<Button>(R.id.btnEditDbConnection).setOnClickListener {
+            showEditDbConnectionDialog()
+        }
+        findViewById<Button>(R.id.btnInitRemoteDb).setOnClickListener {
+            showInitDbConfirmDialog()
         }
 
         tvAbout.text = getAppVersionSummary()
@@ -183,6 +192,130 @@ class SettingsActivity : AppCompatActivity() {
         val packageInfo = packageManager.getPackageInfo(packageName, 0)
         val versionName = packageInfo.versionName ?: "?"
         return getString(R.string.settings_about_summary, versionName)
+    }
+
+    private fun showEditDbConnectionDialog() {
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_db_connection, null)
+        val etHost = view.findViewById<TextInputEditText>(R.id.etDbHost)
+        val etPort = view.findViewById<TextInputEditText>(R.id.etDbPort)
+        val etUser = view.findViewById<TextInputEditText>(R.id.etDbUser)
+        val etPassword = view.findViewById<TextInputEditText>(R.id.etDbPassword)
+        val etDatabase = view.findViewById<TextInputEditText>(R.id.etDbDatabase)
+
+        etHost.setText(SettingsStore.getDbHost(this) ?: com.example.gestion_mobilek.BuildConfig.MARIADB_HOST.trim())
+        val currentPort = SettingsStore.getDbPort(this) ?: com.example.gestion_mobilek.BuildConfig.MARIADB_PORT.takeIf { it > 0 }
+        etPort.setText(currentPort?.toString() ?: "3306")
+        etUser.setText(SettingsStore.getDbUser(this) ?: com.example.gestion_mobilek.BuildConfig.MARIADB_USER.trim())
+        etDatabase.setText(
+            SettingsStore.getDbNameOverride(this)
+                ?: com.example.gestion_mobilek.BuildConfig.MARIADB_DATABASE.trim()
+        )
+        val hasStoredPassword = SettingsStore.getDbPassword(this) != null
+        if (hasStoredPassword) {
+            etPassword.setHint(R.string.db_config_password_saved)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(R.string.settings_edit_db_connection)
+            .setView(view)
+            .setPositiveButton(R.string.db_config_save) { _, _ ->
+                val host = etHost.text?.toString()?.trim() ?: ""
+                val portText = etPort.text?.toString()?.trim() ?: ""
+                val user = etUser.text?.toString()?.trim() ?: ""
+                val password = etPassword.text?.toString()
+                val database = etDatabase.text?.toString()?.trim() ?: ""
+
+                val port = portText.toIntOrNull()
+                if (host.isBlank() || port == null || port <= 0 || user.isBlank() || database.isBlank()) {
+                    Toast.makeText(this, getString(R.string.db_config_error_required), Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+
+                SettingsStore.setDbHost(this, host)
+                SettingsStore.setDbPort(this, port)
+                SettingsStore.setDbUser(this, user)
+                if (!password.isNullOrEmpty()) {
+                    SettingsStore.setDbPassword(this, password)
+                }
+                SettingsStore.setDbNameOverride(this, database)
+
+                Toast.makeText(this, getString(R.string.db_config_saved), Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showInitDbConfirmDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.db_init_title)
+            .setMessage(R.string.db_init_confirm_message)
+            .setPositiveButton(android.R.string.ok) { _, _ -> checkAndInitRemoteDb() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun checkAndInitRemoteDb() {
+        val progress = AlertDialog.Builder(this)
+            .setMessage(R.string.db_init_checking)
+            .setCancelable(false)
+            .create()
+        progress.show()
+
+        Thread {
+            val result = runCatching { ExternalMariaDbSync.checkRemoteDbExists(applicationContext) }
+            runOnUiThread {
+                progress.dismiss()
+                result
+                    .onSuccess { check ->
+                        when (check) {
+                            is ExternalMariaDbSync.DbCheckResult.NotExists -> performDbInit(dropIfExists = false)
+                            is ExternalMariaDbSync.DbCheckResult.Exists -> showReInitConfirmDialog(check.name)
+                        }
+                    }
+                    .onFailure { e ->
+                        Toast.makeText(
+                            this,
+                            getString(R.string.db_init_error, e.message ?: "?"),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+            }
+        }.start()
+    }
+
+    private fun showReInitConfirmDialog(dbName: String) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.db_reinit_title)
+            .setMessage(getString(R.string.db_reinit_confirm_message, dbName))
+            .setPositiveButton(R.string.db_reinit_confirm) { _, _ -> performDbInit(dropIfExists = true) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun performDbInit(dropIfExists: Boolean) {
+        val progress = AlertDialog.Builder(this)
+            .setMessage(R.string.db_init_in_progress)
+            .setCancelable(false)
+            .create()
+        progress.show()
+
+        Thread {
+            val result = runCatching { ExternalMariaDbSync.initRemoteDatabase(applicationContext, dropIfExists) }
+            runOnUiThread {
+                progress.dismiss()
+                result
+                    .onSuccess {
+                        Toast.makeText(this, getString(R.string.db_init_success), Toast.LENGTH_SHORT).show()
+                    }
+                    .onFailure { e ->
+                        Toast.makeText(
+                            this,
+                            getString(R.string.db_init_error, e.message ?: "?"),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+            }
+        }.start()
     }
 }
 

@@ -136,15 +136,23 @@ object ExternalMariaDbSync {
         )
     }
 
-    private fun resolveConfig(): MariaDbConfig {
-        val host = BuildConfig.MARIADB_HOST.trim()
-        val port = BuildConfig.MARIADB_PORT
-        val user = BuildConfig.MARIADB_USER.trim()
-        val password = BuildConfig.MARIADB_PASSWORD
-        val forcedDatabase = BuildConfig.MARIADB_DATABASE.trim().ifBlank { null }
+    sealed class DbCheckResult {
+        object NotExists : DbCheckResult()
+        data class Exists(val name: String) : DbCheckResult()
+    }
+
+    private fun resolveConfig(context: Context): MariaDbConfig {
+        val host = SettingsStore.getDbHost(context) ?: BuildConfig.MARIADB_HOST.trim()
+        val port = SettingsStore.getDbPort(context) ?: BuildConfig.MARIADB_PORT
+        val user = SettingsStore.getDbUser(context) ?: BuildConfig.MARIADB_USER.trim()
+        val password = SettingsStore.getDbPassword(context) ?: BuildConfig.MARIADB_PASSWORD
+        val forcedDatabase = SettingsStore.getDbNameOverride(context)
+            ?: BuildConfig.MARIADB_DATABASE.trim().ifBlank { null }
 
         if (host.isBlank() || port <= 0 || user.isBlank() || password.isBlank()) {
-            throw SQLException("Configuration MariaDB manquante: ajoutez le fichier .env")
+            throw SQLException(
+                "Configuration MariaDB manquante : renseignez les paramètres de connexion dans Paramètres > Base de données distante"
+            )
         }
 
         return MariaDbConfig(
@@ -154,6 +162,103 @@ object ExternalMariaDbSync {
             password = password,
             forcedDatabase = forcedDatabase
         )
+    }
+
+    fun checkRemoteDbExists(context: Context): DbCheckResult {
+        val config = resolveConfig(context)
+        val dbName = config.forcedDatabase
+            ?: throw SQLException("Nom de la base non configuré — renseignez le champ \"Base de données\" dans Paramètres")
+        openServerConnection(config).use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.executeQuery("SHOW DATABASES LIKE '${dbName.replace("'", "\\'")}'").use { rs ->
+                    return if (rs.next()) DbCheckResult.Exists(dbName) else DbCheckResult.NotExists
+                }
+            }
+        }
+    }
+
+    fun initRemoteDatabase(context: Context, dropIfExists: Boolean) {
+        val config = resolveConfig(context)
+        val dbName = config.forcedDatabase
+            ?: throw SQLException("Nom de la base non configuré — renseignez le champ \"Base de données\" dans Paramètres")
+        val safeName = dbName.replace("`", "")
+
+        openServerConnection(config).use { conn ->
+            conn.createStatement().use { stmt ->
+                if (dropIfExists) {
+                    stmt.execute("DROP DATABASE IF EXISTS `$safeName`")
+                }
+                stmt.execute(
+                    "CREATE DATABASE IF NOT EXISTS `$safeName` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+                )
+            }
+        }
+
+        openDatabaseConnection(config, dbName).use { conn ->
+            conn.autoCommit = false
+            try {
+                createRemoteTables(conn)
+                conn.commit()
+            } catch (e: Exception) {
+                conn.rollback()
+                throw e
+            }
+        }
+
+        SettingsStore.setExternalDatabaseName(context, dbName)
+    }
+
+    private fun createRemoteTables(conn: Connection) {
+        conn.createStatement().use { stmt ->
+            listOf(
+                """CREATE TABLE IF NOT EXISTS personnes (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nom VARCHAR(255) NOT NULL,
+                    dernier_passage VARCHAR(20)
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS gouts (
+                    id_personne INT PRIMARY KEY,
+                    aime_ingredient TEXT,
+                    aime_pas_ingredient TEXT,
+                    aime_plat TEXT,
+                    aime_pas_plat TEXT
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS `ingrédient` (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nom_ingredient VARCHAR(255) NOT NULL
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS plats (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nom_plat VARCHAR(255) NOT NULL
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS repas (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nom_plat VARCHAR(255),
+                    id_personnes TEXT,
+                    date_dernier_repas VARCHAR(20),
+                    description TEXT
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS future_repas (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nom_plat VARCHAR(255) NOT NULL,
+                    id_personnes TEXT,
+                    date_dernier_repas VARCHAR(20) NOT NULL,
+                    description TEXT
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS future_repas_rappels (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    future_id INT NOT NULL,
+                    trigger_at_millis BIGINT NOT NULL,
+                    enabled TINYINT(1) NOT NULL DEFAULT 1,
+                    source_mode INT NOT NULL DEFAULT 0
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS _sync_history (
+                    table_name VARCHAR(100),
+                    pk_val VARCHAR(100),
+                    PRIMARY KEY (table_name, pk_val)
+                ) CHARACTER SET utf8mb4"""
+            ).forEach { stmt.execute(it.trimIndent()) }
+        }
     }
 
     private fun openServerConnection(config: MariaDbConfig): Connection {
@@ -298,7 +403,7 @@ object ExternalMariaDbSync {
 
     fun buildOnlineDiagnostic(context: Context): Result<OnlineDiagnosticReport> {
         return runCatching {
-            val config = resolveConfig()
+            val config = resolveConfig(context)
             openServerConnection(config).use { serverConn ->
                 val resolvedDatabase = resolveDatabaseName(context, config, serverConn)
                 openDatabaseConnection(config, resolvedDatabase).use { dbConn ->
@@ -591,7 +696,7 @@ object ExternalMariaDbSync {
 
     fun connectAndPull(context: Context): Result<String> {
         return runCatching {
-            val config = resolveConfig()
+            val config = resolveConfig(context)
             openServerConnection(config).use { serverConn ->
                 val dbName = resolveDatabaseName(context, config, serverConn)
                 openDatabaseConnection(config, dbName).use { dbConn ->
@@ -621,7 +726,7 @@ object ExternalMariaDbSync {
 
     fun pushExternalToRemote(context: Context): Result<Int> {
         return runCatching {
-            val config = resolveConfig()
+            val config = resolveConfig(context)
             val dbName = SettingsStore.getExternalDatabaseName(context)
                 ?: throw SQLException("Nom de base distante introuvable")
 
