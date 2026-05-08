@@ -63,6 +63,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnFutureRecettes.setOnClickListener {
             startActivity(Intent(this, FutureRecettesActivity::class.java))
         }
+        binding.btnCalendar.setOnClickListener {
+            startActivity(Intent(this, com.example.gestion_mobilek.ui.calendar.CalendarActivity::class.java))
+        }
         binding.btnHistorique.setOnClickListener {
             startActivity(Intent(this, HistoriqueActivity::class.java))
         }
@@ -141,6 +144,7 @@ class MainActivity : AppCompatActivity() {
             binding.btnMenu,
             binding.btnIngredients,
             binding.btnFutureRecettes,
+            binding.btnCalendar,
             binding.btnPersonnes,
             binding.btnPlats,
             binding.btnHistorique,
@@ -351,11 +355,4 @@ class MainActivity : AppCompatActivity() {
                 val c = db.rawQuery(
                     "SELECT nom FROM personnes WHERE id = ?",
                     arrayOf(id.trim())
-                )
-                if (c.moveToFirst()) noms.add(c.getString(0))
-                c.close()
-            }
-            noms.joinToString(", ")
-        } catch (e: SQLiteException) { "?" }
-    }
-}
+           

@@ -346,11 +346,19 @@ class ItemListActivity : AppCompatActivity() {
         popup.menu.add(0, 0, 0, title).apply { isEnabled = false }
         popup.menu.add(0, 1, 1, "Modifier")
         popup.menu.add(0, 2, 2, "Supprimer")
+        if (type == "plat") {
+            popup.menu.add(0, 3, 3, "Voir l'historique")
+        }
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
                 1 -> showEditDialog(itemName)
                 2 -> confirmDeleteOne(itemName)
+                3 -> startActivity(
+                    Intent(this, PlatHistoryActivity::class.java).apply {
+                        putExtra("PLAT_NAME", itemName)
+                    }
+                )
             }
             true
         }
@@ -402,12 +410,4 @@ class ItemListActivity : AppCompatActivity() {
                     val db = dbHelper.getDatabase()
                     deleteItemEverywhere(db, itemName)
                     reloadItems()
-                    Toast.makeText(this, "Supprimé", Toast.LENGTH_SHORT).show()
-                } catch (e: SQLiteException) {
-                    Toast.makeText(this, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-            .setNegativeButton("Annuler", null)
-            .show()
-    }
-}
+                    Toast

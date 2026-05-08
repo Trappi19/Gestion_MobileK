@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
 
     <application
         android:name=".app.GestionMobileKApp"
@@ -17,7 +18,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Gestion_MobileK">
-        <!-- Ton MainActivity déjà là -->
 
         <activity
             android:name=".ui.main.MainActivity"
@@ -28,24 +28,28 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".ui.persons.PersonListActivity"
-            android:exported="false" />
-
+        <activity android:name=".ui.persons.PersonListActivity" android:exported="false" />
         <activity android:name=".ui.persons.AddPersonActivity" android:exported="false" />
-        <activity android:name=".ui.items.ItemListActivity" android:exported="false"/>
-        <activity android:name=".ui.items.AddItemActivity" android:exported="false"/>
-        <activity android:name=".ui.persons.PersonDetailActivity" android:exported="false"/>
-        <activity android:name=".ui.persons.EditPersonActivity" android:exported="false"/>
-        <activity android:name=".ui.history.HistoriqueActivity" android:exported="false"/>
-        <activity android:name=".ui.history.RepasDetailActivity" android:exported="false"/>
-        <activity android:name=".ui.future.FutureRecettesActivity" android:exported="false"/>
-        <activity android:name=".ui.future.AddEditFutureRecetteActivity" android:exported="false"/>
-        <activity android:name=".ui.future.FutureRecetteDetailActivity" android:exported="false"/>
-        <activity android:name=".ui.history.AddHistoriqueRepasActivity" android:exported="false"/>
-        <activity android:name=".ui.persons.PersonMealsHistoryActivity" android:exported="false"/>
-        <activity android:name=".ui.persons.PersonGroupTasteActivity" android:exported="false"/>
-        <activity android:name=".ui.settings.SettingsActivity" android:exported="false"/>
+        <activity android:name=".ui.persons.PersonDetailActivity" android:exported="false" />
+        <activity android:name=".ui.persons.EditPersonActivity" android:exported="false" />
+        <activity android:name=".ui.persons.PersonMealsHistoryActivity" android:exported="false" />
+        <activity android:name=".ui.persons.PersonGroupTasteActivity" android:exported="false" />
+
+        <activity android:name=".ui.items.ItemListActivity" android:exported="false" />
+        <activity android:name=".ui.items.AddItemActivity" android:exported="false" />
+        <activity android:name=".ui.items.PlatHistoryActivity" android:exported="false" />
+
+        <activity android:name=".ui.history.HistoriqueActivity" android:exported="false" />
+        <activity android:name=".ui.history.RepasDetailActivity" android:exported="false" />
+        <activity android:name=".ui.history.AddHistoriqueRepasActivity" android:exported="false" />
+
+        <activity android:name=".ui.future.FutureRecettesActivity" android:exported="false" />
+        <activity android:name=".ui.future.AddEditFutureRecetteActivity" android:exported="false" />
+        <activity android:name=".ui.future.FutureRecetteDetailActivity" android:exported="false" />
+
+        <activity android:name=".ui.calendar.CalendarActivity" android:exported="false" />
+
+        <activity android:name=".ui.settings.SettingsActivity" android:exported="false" />
         <activity android:name=".ui.settings.OnlineDiagnosticActivity" android:exported="false" />
 
         <receiver
@@ -59,7 +63,6 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-
 
     </application>
 

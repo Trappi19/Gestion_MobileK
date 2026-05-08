@@ -121,6 +121,18 @@
                 android:textColor="#444444"
                 android:textSize="15sp" />
 
+            <!-- Bouton Google Calendar -->
+            <Button
+                android:id="@+id/btnAddToGoogleCalendar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:backgroundTint="#4285F4"
+                android:text="Ajouter à Google Calendar"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                app:cornerRadius="24dp" />
+
         </LinearLayout>
     </ScrollView>
 

@@ -90,13 +90,22 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
                 refreshPersonsView()
             }
 
+            // Préremplissage plats depuis CalendarActivity ou PlatHistoryActivity
             val preselectedPlats = intent.getStringArrayExtra("PRESELECTED_PLATS")
-                ?.filter { it.isNotBlank() }
-                .orEmpty()
-            if (preselectedPlats.isNotEmpty()) {
+            if (!preselectedPlats.isNullOrEmpty()) {
                 selectedPlats.clear()
-                selectedPlats.addAll(preselectedPlats)
+                selectedPlats.addAll(preselectedPlats.filter { it.isNotBlank() })
                 refreshPlatsView()
+            }
+
+            // Préremplissage date depuis CalendarActivity (long press)
+            val preselectedDate = intent.getStringExtra("PRESELECTED_DATE")
+            if (!preselectedDate.isNullOrBlank()) {
+                val normalized = DateStorageUtils.normalizeStorageDate(preselectedDate)
+                if (!normalized.isNullOrBlank()) {
+                    selectedDateStorage = normalized
+                    tvDate.text = DateStorageUtils.displayFromStorage(normalized)
+                }
             }
         }
 
@@ -550,28 +559,4 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
         return if (cols.contains("date_dernier_repas")) "date_dernier_repas" else "date_repas"
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK) return
-
-        when (requestCode) {
-            REQUEST_ADD_PERSON -> {
-                val createdPersonId = data?.getIntExtra("PERSON_ID", -1) ?: -1
-                if (createdPersonId > 0) {
-                    selectedPersonIds.add(createdPersonId)
-                    refreshPersonsView()
-                }
-                showPersonsPicker()
-            }
-
-            REQUEST_ADD_PLAT -> {
-                val createdPlatName = data?.getStringExtra("ITEM_NAME")?.trim().orEmpty()
-                if (createdPlatName.isNotBlank()) {
-                    selectedPlats.add(createdPlatName)
-                    refreshPlatsView()
-                }
-                showPlatsPicker()
-            }
-        }
-    }
-}
+    override

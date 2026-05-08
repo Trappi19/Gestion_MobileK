@@ -59,6 +59,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -68,6 +69,11 @@ android {
         resources {
             excludes += "/META-INF/AL2.0"
             excludes += "/META-INF/LGPL2.1"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
         }
     }
 }
@@ -75,11 +81,19 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0")
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation("org.mariadb.jdbc:mariadb-java-client:3.4.1")
+    implementation("com.kizitonwose.calendar:view:2.10.1")
+    implementation("com.google.android.gms:play-services-auth:21.5.1")
+    implementation("com.google.api-client:google-api-client-android:2.2.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
+    implementation("com.google.apis:google-api-services-calendar:v3-rev20231123-2.0.0") {
+        exclude(group = "org.apache.httpcomponents")
+    }
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

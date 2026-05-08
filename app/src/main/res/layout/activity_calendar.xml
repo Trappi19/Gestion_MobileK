@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F5F5F5"
+    android:orientation="vertical">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#4A90E2"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Retour"
+            android:src="@android:drawable/ic_menu_revert"
+            app:tint="@android:color/white" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Calendrier"
+            android:textColor="@android:color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnToday"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginEnd="4dp"
+            android:backgroundTint="@android:color/white"
+            android:text="Aujourd'hui"
+            android:textAllCaps="false"
+            android:textColor="#4A90E2"
+            android:textSize="12sp"
+            app:cornerRadius="18dp" />
+    </LinearLayout>
+
+    <!-- Navigation mois -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp">
+
+        <ImageButton
+            android:id="@+id/btnPrevMonth"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Mois précédent"
+            android:src="@android:drawable/ic_media_previous" />
+
+        <TextView
+            android:id="@+id/tvMonthYear"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:text="Mai 2026"
+            android:textColor="#222222"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btnNextMonth"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Mois suivant"
+            android:src="@android:drawable/ic_media_next" />
+    </LinearLayout>
+
+    <!-- Jours de la semaine -->
+    <LinearLayout
+        android:id="@+id/layoutDayHeaders"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        android:orientation="horizontal"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingBottom="4dp">
+
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="L" android:textColor="#888888" android:textSize="13sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="M" android:textColor="#888888" android:textSize="13sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="M" android:textColor="#888888" android:textSize="13sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="J" android:textColor="#888888" android:textSize="13sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="V" android:textColor="#888888" android:textSize="13sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="S" android:textColor="#EE4444" android:textSize="13sp" android:textStyle="bold"/>
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:gravity="center" android:text="D" android:textColor="#EE4444" android:textSize="13sp" android:textStyle="bold"/>
+    </LinearLayout>
+
+    <!-- Grille calendrier -->
+    <com.kizitonwose.calendar.view.CalendarView
+        android:id="@+id/calendarView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        app:cv_dayViewResource="@layout/item_calendar_day"
+        app:cv_monthHeaderResource="@layout/item_calendar_month_header"
+        app:cv_scrollMode="paged"
+        app:cv_orientation="horizontal" />
+
+    <!-- Légende -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/white"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="6dp">
+
+        <View
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="#7B68EE"
+            android:layout_marginEnd="4dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Planifié"
+            android:textColor="#666666"
+            android:textSize="12sp"
+            android:layout_marginEnd="16dp"/>
+
+        <View
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="#AAAAAA"
+            android:layout_marginEnd="4dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Passé"
+            android:textColor="#666666"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <!-- Séparateur -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E0E0E0" />
+
+    <!-- Label repas du jour -->
+    <TextView
+        android:id="@+id/tvSelectedDayLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="12dp"
+        android:text="Sélectionnez un jour"
+        android:textColor="#666666"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <!-- Liste repas du jour sélectionné -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/containerDayMeals"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="16dp"/>
+    </androidx.core.widget.NestedScrollView>
+
+</LinearLayout>
