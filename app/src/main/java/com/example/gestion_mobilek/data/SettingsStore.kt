@@ -28,6 +28,7 @@ object SettingsStore {
     private const val KEY_DB_USER = "db_user"
     private const val KEY_DB_PASSWORD = "db_password"
     private const val KEY_DB_NAME_OVERRIDE = "db_name_override"
+    private const val KEY_DEV_RESET_DB = "dev_reset_db_on_launch"
 
     fun areReminderNotificationsEnabled(context: Context): Boolean {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -116,6 +117,16 @@ object SettingsStore {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
             if (password == null) remove(KEY_DB_PASSWORD) else putString(KEY_DB_PASSWORD, password)
         }
+    }
+
+    fun isDevResetDbEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_DEV_RESET_DB, false)
+    }
+
+    fun setDevResetDbEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit { putBoolean(KEY_DEV_RESET_DB, enabled) }
     }
 
     fun getDbNameOverride(context: Context): String? =

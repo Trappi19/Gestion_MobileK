@@ -89,6 +89,15 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
                 selectedPersonIds.addAll(preselectedIds)
                 refreshPersonsView()
             }
+
+            val preselectedPlats = intent.getStringArrayExtra("PRESELECTED_PLATS")
+                ?.filter { it.isNotBlank() }
+                .orEmpty()
+            if (preselectedPlats.isNotEmpty()) {
+                selectedPlats.clear()
+                selectedPlats.addAll(preselectedPlats)
+                refreshPlatsView()
+            }
         }
 
         cbReminders.setOnCheckedChangeListener { _, checked ->

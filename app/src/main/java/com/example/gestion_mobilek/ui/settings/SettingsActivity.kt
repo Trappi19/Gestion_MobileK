@@ -49,6 +49,7 @@ class SettingsActivity : AppCompatActivity() {
         val tvAbout = findViewById<TextView>(R.id.tvAbout)
         val cbReminderNotifications = findViewById<CheckBox>(R.id.cbReminderNotifications)
         val cbKeepExternalMode = findViewById<CheckBox>(R.id.cbKeepExternalMode)
+        val cbDevResetDb = findViewById<CheckBox>(R.id.cbDevResetDb)
 
         cbReminderNotifications.isChecked = SettingsStore.areReminderNotificationsEnabled(this)
         cbReminderNotifications.setOnCheckedChangeListener { _, isChecked ->
@@ -60,6 +61,44 @@ class SettingsActivity : AppCompatActivity() {
         cbKeepExternalMode.setOnCheckedChangeListener { _, isChecked ->
             SettingsStore.setKeepExternalMode(this, isChecked)
             refreshStatuses(tvNotificationStatus, tvAlarmStatus, tvDataSourceStatus, tvRemoteDbName)
+        }
+
+        cbDevResetDb.isChecked = SettingsStore.isDevResetDbEnabled(this)
+        cbDevResetDb.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                // Sauvegarde la BDD actuelle avant d'activer le mode dev
+                val db = DatabaseHelper(this)
+                val saved = db.backupCurrentDb()
+                SettingsStore.setDevResetDbEnabled(this, true)
+                val msg = if (saved) getString(R.string.settings_dev_backup_done)
+                          else getString(R.string.settings_dev_backup_failed)
+                Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+            } else {
+                SettingsStore.setDevResetDbEnabled(this, false)
+                // Propose de restaurer la sauvegarde si elle existe
+                val db = DatabaseHelper(this)
+                if (db.hasBackupDb()) {
+                    AlertDialog.Builder(this)
+                        .setTitle(R.string.settings_dev_restore_title)
+                        .setMessage(R.string.settings_dev_restore_message)
+                        .setPositiveButton(android.R.string.ok) { _, _ ->
+                            DatabaseHelper.closeActiveDatabase()
+                            val restored = db.restoreBackupDb()
+                            Toast.makeText(
+                                this,
+                                if (restored) getString(R.string.settings_dev_restore_done)
+                                else getString(R.string.settings_dev_restore_failed),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        .setNegativeButton(android.R.string.cancel) { _, _ ->
+                            Toast.makeText(this, getString(R.string.settings_dev_mode_disabled), Toast.LENGTH_SHORT).show()
+                        }
+                        .show()
+                } else {
+                    Toast.makeText(this, getString(R.string.settings_dev_mode_disabled), Toast.LENGTH_SHORT).show()
+                }
+            }
         }
 
         findViewById<Button>(R.id.btnRequestNotifications).setOnClickListener {

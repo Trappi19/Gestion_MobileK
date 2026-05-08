@@ -26,6 +26,7 @@ class DatabaseHelper(private val context: Context) :
     companion object {
         private const val LOCAL_DB_NAME = "bdd.db"
         const val EXTERNAL_CACHE_DB_NAME = "bdd_online.db"
+        const val BACKUP_DB_NAME = "bdd_backup.db"
         private const val DB_VERSION = 1
         private var localDbInstance: SQLiteDatabase? = null
         private var externalDbInstance: SQLiteDatabase? = null
@@ -68,9 +69,56 @@ class DatabaseHelper(private val context: Context) :
 
     private fun ensureDatabaseExists(dbName: String) {
         val dbFile = context.getDatabasePath(dbName)
+        // Mode dev : on écrase toujours bdd.db avec la version assets au lancement
+        if (dbName == LOCAL_DB_NAME && SettingsStore.isDevResetDbEnabled(context)) {
+            localDbInstance?.takeIf { it.isOpen }?.close()
+            localDbInstance = null
+            if (dbFile.exists()) dbFile.delete()
+            copyDatabaseFromAssets(dbName)
+            return
+        }
         if (!dbFile.exists()) {
             copyDatabaseFromAssets(dbName)
         }
+    }
+
+    /**
+     * Sauvegarde bdd.db → bdd_backup.db (appelé depuis SettingsActivity quand on active le mode dev).
+     * Retourne true si la sauvegarde a réussi.
+     */
+    fun backupCurrentDb(): Boolean {
+        return try {
+            val src = context.getDatabasePath(LOCAL_DB_NAME)
+            val dst = context.getDatabasePath(BACKUP_DB_NAME)
+            if (!src.exists()) return false
+            src.copyTo(dst, overwrite = true)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    /**
+     * Restaure bdd_backup.db → bdd.db.
+     * Ferme l'instance locale avant de copier.
+     * Retourne true si la restauration a réussi.
+     */
+    fun restoreBackupDb(): Boolean {
+        return try {
+            val src = context.getDatabasePath(BACKUP_DB_NAME)
+            val dst = context.getDatabasePath(LOCAL_DB_NAME)
+            if (!src.exists()) return false
+            localDbInstance?.takeIf { it.isOpen }?.close()
+            localDbInstance = null
+            src.copyTo(dst, overwrite = true)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun hasBackupDb(): Boolean {
+        return context.getDatabasePath(BACKUP_DB_NAME).exists()
     }
 
     private fun copyDatabaseFromAssets(targetDbName: String) {

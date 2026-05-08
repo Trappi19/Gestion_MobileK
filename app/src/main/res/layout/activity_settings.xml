@@ -116,6 +116,13 @@
                     android:layout_marginBottom="8dp"
                     android:text="@string/settings_reminder_notifications" />
 
+                <CheckBox
+                    android:id="@+id/cbDevResetDb"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:text="@string/settings_dev_reset_db" />
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"

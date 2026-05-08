@@ -21,8 +21,8 @@
     <string name="home_returned_local_unsynced">synchronisation échoué</string>
     <string name="group_taste_likes_common">Goûts communs</string>
     <string name="group_taste_likes_all">Aiment tous</string>
-    <string name="group_taste_dislikes_common">À éviter</string>
-    <string name="group_taste_dislikes_all">N’aiment pas tous</string>
+    <string name="group_taste_dislikes_common">À éviter en commun</string>
+    <string name="group_taste_dislikes_all">À éviter (tous)</string>
     <string name="group_taste_empty_common_likes">Aucun goût commun</string>
     <string name="group_taste_empty_common_dislikes">Aucun rejet commun</string>
     <string name="group_taste_empty_all_likes">Aucun goût trouvé</string>
@@ -57,6 +57,14 @@
     <string name="settings_status_missing">à activer</string>
     <string name="settings_preferences_title">Préférences</string>
     <string name="settings_reminder_notifications">Activer les notifications de rappels</string>
+    <string name="settings_dev_reset_db">Mode développeur (réinitialise la BDD locale au lancement)</string>
+    <string name="settings_dev_backup_done">BDD sauvegardée. La BDD sera réinitialisée au prochain lancement.</string>
+    <string name="settings_dev_backup_failed">Impossible de sauvegarder la BDD actuelle.</string>
+    <string name="settings_dev_restore_title">Restaurer la BDD ?</string>
+    <string name="settings_dev_restore_message">Une sauvegarde de votre BDD existe. Voulez-vous la restaurer maintenant ?</string>
+    <string name="settings_dev_restore_done">BDD restaurée.</string>
+    <string name="settings_dev_restore_failed">Impossible de restaurer la BDD.</string>
+    <string name="settings_dev_mode_disabled">Mode développeur désactivé.</string>
     <string name="settings_data_source_title">Source de données</string>
     <string name="settings_keep_external_mode">Rester en mode externe (connexion auto)</string>
     <string name="settings_data_source_status">Source active : %1$s</string>

@@ -45,7 +45,7 @@ class PersonGroupTasteActivity : AppCompatActivity() {
     private lateinit var dbHelper: DatabaseHelper
     private val selectedPersonIds = mutableListOf<Int>()
     private var likesFilter = TasteFilter.COMMON
-    private var dislikesFilter = TasteFilter.COMMON
+    private var dislikesFilter = TasteFilter.ALL
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -252,6 +252,24 @@ class PersonGroupTasteActivity : AppCompatActivity() {
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
         ).apply { bottomMargin = 4 }
+
+        // Long-press : uniquement pour les plats (🍽️)
+        if (text.startsWith("🍽️")) {
+            val platName = text.removePrefix("🍽️").trim()
+            tv.setOnLongClickListener { anchor ->
+                val popup = PopupMenu(this, anchor)
+                popup.menu.add(0, 1, 1, getString(R.string.group_taste_add_future_recipe))
+                popup.setOnMenuItemClickListener { item ->
+                    if (item.itemId == 1) {
+                        openAddFutureRecipeWithPlat(platName)
+                        true
+                    } else false
+                }
+                popup.show()
+                true
+            }
+        }
+
         container.addView(tv)
     }
 
@@ -262,6 +280,17 @@ class PersonGroupTasteActivity : AppCompatActivity() {
         }
         startActivity(Intent(this, AddEditFutureRecetteActivity::class.java).apply {
             putExtra("PRESELECTED_PERSON_IDS", selectedPersonIds.toIntArray())
+        })
+    }
+
+    private fun openAddFutureRecipeWithPlat(platName: String) {
+        if (selectedPersonIds.isEmpty()) {
+            Toast.makeText(this, "Aucune personne selectionnee", Toast.LENGTH_SHORT).show()
+            return
+        }
+        startActivity(Intent(this, AddEditFutureRecetteActivity::class.java).apply {
+            putExtra("PRESELECTED_PERSON_IDS", selectedPersonIds.toIntArray())
+            putExtra("PRESELECTED_PLATS", arrayOf(platName))
         })
     }
 }
