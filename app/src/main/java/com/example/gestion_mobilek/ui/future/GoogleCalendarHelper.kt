@@ -34,16 +34,16 @@ object GoogleCalendarHelper {
 
     // ─── Assure que la colonne google_event_id existe dans future_repas ──
 
-    fun ensureGoogleEventIdColumn(db: SQLiteDatabase) {
+    fun ensureGoogleEventIdColumn(db: SQLiteDatabase, table: String = "future_repas") {
         try {
             val cols = mutableSetOf<String>()
-            db.rawQuery("PRAGMA table_info(future_repas)", null).use { c ->
+            db.rawQuery("PRAGMA table_info($table)", null).use { c ->
                 if (c.moveToFirst()) {
                     do { cols.add(c.getString(1)) } while (c.moveToNext())
                 }
             }
             if (!cols.contains(COLUMN_GOOGLE_EVENT_ID)) {
-                db.execSQL("ALTER TABLE future_repas ADD COLUMN $COLUMN_GOOGLE_EVENT_ID TEXT")
+                db.execSQL("ALTER TABLE $table ADD COLUMN $COLUMN_GOOGLE_EVENT_ID TEXT")
             }
         } catch (_: SQLiteException) {}
     }

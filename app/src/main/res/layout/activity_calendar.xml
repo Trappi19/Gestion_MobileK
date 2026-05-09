@@ -13,7 +13,10 @@
         android:background="#4A90E2"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:padding="8dp">
+        android:paddingTop="32dp"
+        android:paddingBottom="8dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
 
         <ImageButton
             android:id="@+id/btnBack"
@@ -115,9 +118,7 @@
         android:layout_height="wrap_content"
         android:background="@android:color/white"
         app:cv_dayViewResource="@layout/item_calendar_day"
-        app:cv_monthHeaderResource="@layout/item_calendar_month_header"
-        app:cv_scrollMode="paged"
-        app:cv_orientation="horizontal" />
+        app:cv_monthHeaderResource="@layout/item_calendar_month_header" />
 
     <!-- Légende -->
     <LinearLayout
@@ -189,5 +190,23 @@
             android:paddingEnd="12dp"
             android:paddingBottom="16dp"/>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- Bouton prévoir un repas -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnPlanifierRepas"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp"
+        android:text="Prévoir un repas"
+        android:textAllCaps="false"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:backgroundTint="#7B68EE"
+        app:cornerRadius="24dp"/>
 
 </LinearLayout>

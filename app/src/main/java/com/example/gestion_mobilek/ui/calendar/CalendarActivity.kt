@@ -65,6 +65,7 @@ class CalendarActivity : AppCompatActivity() {
     private lateinit var tvMonthYear: TextView
     private lateinit var tvSelectedDayLabel: TextView
     private lateinit var containerDayMeals: LinearLayout
+    private lateinit var btnPlanifierRepas: android.widget.Button
 
     private var currentMonth: YearMonth = YearMonth.now()
     private var selectedDate: LocalDate? = null
@@ -85,6 +86,14 @@ class CalendarActivity : AppCompatActivity() {
         tvMonthYear = findViewById(R.id.tvMonthYear)
         tvSelectedDayLabel = findViewById(R.id.tvSelectedDayLabel)
         containerDayMeals = findViewById(R.id.containerDayMeals)
+        btnPlanifierRepas = findViewById(R.id.btnPlanifierRepas)
+
+        btnPlanifierRepas.setOnClickListener {
+            val date = selectedDate ?: LocalDate.now()
+            val intent = Intent(this, AddEditFutureRecetteActivity::class.java)
+            intent.putExtra("PRESELECTED_DATE", storageKeyFromLocalDate(date))
+            startActivity(intent)
+        }
 
         findViewById<ImageButton>(R.id.btnBack).setOnClickListener { finish() }
 
@@ -120,9 +129,7 @@ class CalendarActivity : AppCompatActivity() {
         val startMonth = YearMonth.now().minusMonths(12)
         val endMonth = YearMonth.now().plusMonths(24)
 
-        calendarView.setup(startMonth, endMonth, DayOfWeek.MONDAY)
-        calendarView.scrollToMonth(currentMonth)
-
+        // Assigner les binders AVANT setup() — obligatoire en v2
         calendarView.dayBinder = object : MonthDayBinder<DayViewContainer> {
             override fun create(view: View) = DayViewContainer(view)
 
@@ -145,9 +152,7 @@ class CalendarActivity : AppCompatActivity() {
 
                     // Fond sélection
                     if (data.date == selectedDate) {
-                        tv.setBackgroundResource(android.R.drawable.btn_default_small)
-                        tv.setBackgroundColor(Color.parseColor("#4A90E2"))
-                        // Arrondi simple via padding
+                        tv.setBackgroundResource(R.drawable.bg_calendar_selected)
                     } else {
                         tv.background = null
                     }
@@ -193,6 +198,10 @@ class CalendarActivity : AppCompatActivity() {
             override fun bind(container: MonthHeaderContainer, data: CalendarMonth) {}
         }
 
+        // setup() après les binders
+        calendarView.setup(startMonth, endMonth, DayOfWeek.MONDAY)
+        calendarView.scrollToMonth(currentMonth)
+
         calendarView.monthScrollListener = { month ->
             currentMonth = month.yearMonth
             tvMonthYear.text = currentMonth.format(monthFormatter)
@@ -201,7 +210,6 @@ class CalendarActivity : AppCompatActivity() {
             calendarView.notifyCalendarChanged()
         }
 
-        // Afficher le mois courant
         tvMonthYear.text = currentMonth.format(monthFormatter)
             .replaceFirstChar { it.uppercase() }
 

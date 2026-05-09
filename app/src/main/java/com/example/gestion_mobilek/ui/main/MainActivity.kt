@@ -355,4 +355,11 @@ class MainActivity : AppCompatActivity() {
                 val c = db.rawQuery(
                     "SELECT nom FROM personnes WHERE id = ?",
                     arrayOf(id.trim())
-           
+                )
+                if (c.moveToFirst()) noms.add(c.getString(0))
+                c.close()
+            }
+            noms.joinToString(", ")
+        } catch (e: SQLiteException) { "?" }
+    }
+}

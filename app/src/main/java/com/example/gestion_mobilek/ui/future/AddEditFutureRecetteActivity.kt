@@ -559,4 +559,28 @@ class AddEditFutureRecetteActivity : AppCompatActivity() {
         return if (cols.contains("date_dernier_repas")) "date_dernier_repas" else "date_repas"
     }
 
-    override
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+
+        when (requestCode) {
+            REQUEST_ADD_PERSON -> {
+                val createdPersonId = data?.getIntExtra("PERSON_ID", -1) ?: -1
+                if (createdPersonId > 0) {
+                    selectedPersonIds.add(createdPersonId)
+                    refreshPersonsView()
+                }
+                showPersonsPicker()
+            }
+
+            REQUEST_ADD_PLAT -> {
+                val createdPlatName = data?.getStringExtra("ITEM_NAME")?.trim().orEmpty()
+                if (createdPlatName.isNotBlank()) {
+                    selectedPlats.add(createdPlatName)
+                    refreshPlatsView()
+                }
+                showPlatsPicker()
+            }
+        }
+    }
+}

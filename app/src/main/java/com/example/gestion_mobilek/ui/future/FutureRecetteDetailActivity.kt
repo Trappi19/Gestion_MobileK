@@ -221,4 +221,154 @@ class FutureRecetteDetailActivity : AppCompatActivity() {
                         if (existingEventId != null) "Événement mis à jour !" else "Ajouté à Google Calendar !",
                         Toast.LENGTH_SHORT
                     ).show()
-       
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    btnGcal?.isEnabled = true
+                    loadDetail()
+                    val msg = when {
+                        e.message?.contains("network", ignoreCase = true) == true -> "Pas de réseau"
+                        e.message?.contains("auth", ignoreCase = true) == true -> "Erreur d'authentification Google"
+                        else -> "Erreur : ${e.message}"
+                    }
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        when (requestCode) {
+            REQUEST_GOOGLE_SIGN_IN -> {
+                val task = com.google.android.gms.auth.api.signin.GoogleSignIn.getSignedInAccountFromIntent(data)
+                if (task.isSuccessful) {
+                    pushToGoogleCalendar(task.result?.email ?: "")
+                } else {
+                    val e = task.exception
+                    val statusCode = (e as? com.google.android.gms.common.api.ApiException)?.statusCode
+                    val msg = "Sign-in échoué — code=$statusCode msg=${e?.message}"
+                    android.util.Log.e("GoogleSignIn", msg, e)
+                    Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // ─── Description ──────────────────────────────────────────────────────
+
+    private fun showEditDescriptionDialog() {
+        if (futureId <= 0) {
+            Toast.makeText(this, "Modification indisponible", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val input = EditText(this).apply {
+            setText(currentDescription)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            minLines = 4
+            maxLines = 8
+            gravity = Gravity.TOP or Gravity.START
+            hint = "Ajouter une note utile sur cette recette"
+            setSelection(text.length)
+        }
+
+        val wrapper = LinearLayout(this).apply {
+            setPadding(48, 20, 48, 0)
+            addView(input, LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ))
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Modifier la description")
+            .setView(wrapper)
+            .setPositiveButton("Enregistrer") { _, _ ->
+                saveDescription(input.text.toString().trim())
+            }
+            .setNeutralButton("Vider") { _, _ ->
+                saveDescription("")
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+
+    private fun saveDescription(newValue: String) {
+        try {
+            val values = ContentValues().apply { put("description", newValue) }
+            dbHelper.getDatabaseForMode(sourceMode != 0).update(sourceTable, values, "id = ?", arrayOf(futureId.toString()))
+            currentDescription = newValue
+            loadDetail()
+            Toast.makeText(this, "Description mise a jour", Toast.LENGTH_SHORT).show()
+        } catch (e: SQLiteException) {
+            Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // ─── Personnes ────────────────────────────────────────────────────────
+
+    private fun loadPersonnes(idPersonnes: String) {
+        val container = findViewById<LinearLayout>(R.id.containerPersonnes)
+        container.removeAllViews()
+
+        if (idPersonnes.isBlank()) {
+            addPersonRow(container, "Aucune personne", true)
+            return
+        }
+
+        try {
+            val db = dbHelper.getDatabaseForMode(sourceMode != 0)
+            val ids = idPersonnes.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            if (ids.isEmpty()) {
+                addPersonRow(container, "Aucune personne", true)
+                return
+            }
+
+            ids.forEach { id ->
+                val c = db.rawQuery("SELECT nom FROM personnes WHERE id = ?", arrayOf(id))
+                if (c.moveToFirst()) {
+                    addPersonRow(container, "👤 ${c.getString(0)}", false)
+                } else {
+                    addPersonRow(container, "👤 Personne inconnue (#$id)", true)
+                }
+                c.close()
+            }
+        } catch (e: SQLiteException) {
+            Toast.makeText(this, "Erreur BDD: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun addPersonRow(container: LinearLayout, text: String, gray: Boolean) {
+        val tv = TextView(this)
+        tv.text = text
+        tv.textSize = 15f
+        tv.setPadding(0, 10, 0, 10)
+        tv.setTextColor(if (gray) 0xFFAAAAAA.toInt() else 0xFF222222.toInt())
+        tv.layoutParams = LinearLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply { bottomMargin = 4 }
+        container.addView(tv)
+    }
+
+    // ─── Suppression ──────────────────────────────────────────────────────
+
+    private fun confirmDelete() {
+        AlertDialog.Builder(this)
+            .setTitle("Supprimer cette recette ?")
+            .setMessage("Cette action est irréversible.")
+            .setPositiveButton("Supprimer") { _, _ ->
+                try {
+                    FutureReminderScheduler.cancelMealReminders(this@FutureRecetteDetailActivity, futureId, sourceMode, deleteRows = true)
+                    dbHelper.getDatabaseForMode(sourceMode != 0).delete(sourceTable, "id = ?", arrayOf(futureId.toString()))
+                    Toast.makeText(this, "Recette supprimée", Toast.LENGTH_SHORT).show()
+                    finish()
+                } catch (e: SQLiteException) {
+                    Toast.makeText(this, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+}

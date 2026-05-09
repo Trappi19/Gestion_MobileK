@@ -410,4 +410,12 @@ class ItemListActivity : AppCompatActivity() {
                     val db = dbHelper.getDatabase()
                     deleteItemEverywhere(db, itemName)
                     reloadItems()
-                    Toast
+                    Toast.makeText(this, "Supprimé", Toast.LENGTH_SHORT).show()
+                } catch (e: SQLiteException) {
+                    Toast.makeText(this, "Erreur: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            .setNegativeButton("Annuler", null)
+            .show()
+    }
+}
