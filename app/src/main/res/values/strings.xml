@@ -18,6 +18,8 @@
     <string name="home_external_connection_failed">Connexion externe impossible : %1$s</string>
     <string name="home_returned_local">Retour à la base locale</string>
     <string name="home_returned_local_unsynced">synchronisation échoué</string>
+    <string name="home_sync_remote_to_local_success">BDD locale mise à jour depuis le distant</string>
+    <string name="home_sync_remote_to_local_failed">Échec mise à jour BDD locale</string>
     <string name="group_taste_likes_common">Goûts communs</string>
     <string name="group_taste_likes_all">Aiment tous</string>
     <string name="group_taste_dislikes_common">À éviter en commun</string>
@@ -66,6 +68,7 @@
     <string name="settings_dev_mode_disabled">Mode développeur désactivé.</string>
     <string name="settings_data_source_title">Source de données</string>
     <string name="settings_keep_external_mode">Rester en mode externe (connexion auto)</string>
+    <string name="settings_sync_remote_to_local">Copier la BDD distante vers le local automatiquement</string>
     <string name="settings_data_source_status">Source active : %1$s</string>
     <string name="settings_data_source_local">base locale</string>
     <string name="settings_data_source_external">base externe</string>

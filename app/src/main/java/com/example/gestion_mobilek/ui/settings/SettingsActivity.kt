@@ -50,6 +50,7 @@ class SettingsActivity : AppCompatActivity() {
         val cbReminderNotifications = findViewById<CheckBox>(R.id.cbReminderNotifications)
         val cbKeepExternalMode = findViewById<CheckBox>(R.id.cbKeepExternalMode)
         val cbDevResetDb = findViewById<CheckBox>(R.id.cbDevResetDb)
+        val cbSyncRemoteToLocal = findViewById<CheckBox>(R.id.cbSyncRemoteToLocal)
 
         cbReminderNotifications.isChecked = SettingsStore.areReminderNotificationsEnabled(this)
         cbReminderNotifications.setOnCheckedChangeListener { _, isChecked ->
@@ -61,6 +62,17 @@ class SettingsActivity : AppCompatActivity() {
         cbKeepExternalMode.setOnCheckedChangeListener { _, isChecked ->
             SettingsStore.setKeepExternalMode(this, isChecked)
             refreshStatuses(tvNotificationStatus, tvAlarmStatus, tvDataSourceStatus, tvRemoteDbName)
+        }
+
+        // Visible seulement si host configuré (SharedPreferences ou BuildConfig)
+        val effectiveHost = SettingsStore.getDbHost(this)
+            ?: com.example.gestion_mobilek.BuildConfig.MARIADB_HOST.trim().ifBlank { null }
+        if (effectiveHost != null) {
+            cbSyncRemoteToLocal.visibility = android.view.View.VISIBLE
+        }
+        cbSyncRemoteToLocal.isChecked = SettingsStore.isSyncRemoteToLocalEnabled(this)
+        cbSyncRemoteToLocal.setOnCheckedChangeListener { _, isChecked ->
+            SettingsStore.setSyncRemoteToLocalEnabled(this, isChecked)
         }
 
         cbDevResetDb.isChecked = SettingsStore.isDevResetDbEnabled(this)

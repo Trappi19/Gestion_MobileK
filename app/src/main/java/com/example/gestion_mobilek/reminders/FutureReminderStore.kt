@@ -87,6 +87,22 @@ object FutureReminderStore {
         return out
     }
 
+    fun loadAll(db: SQLiteDatabase): List<ReminderEntry> {
+        ensureSchema(db)
+        val out = mutableListOf<ReminderEntry>()
+        db.rawQuery(
+            "SELECT id, future_id, trigger_at_millis, enabled, source_mode FROM $TABLE ORDER BY trigger_at_millis ASC",
+            null
+        ).use { cursor ->
+            if (cursor.moveToFirst()) {
+                do {
+                    out.add(cursorToEntry(cursor))
+                } while (cursor.moveToNext())
+            }
+        }
+        return out
+    }
+
     fun loadAllEnabled(db: SQLiteDatabase): List<ReminderEntry> {
         ensureSchema(db)
         val out = mutableListOf<ReminderEntry>()

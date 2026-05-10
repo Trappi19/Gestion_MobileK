@@ -30,6 +30,7 @@ object SettingsStore {
     private const val KEY_DB_NAME_OVERRIDE = "db_name_override"
     private const val KEY_DEV_RESET_DB = "dev_reset_db_on_launch"
     private const val KEY_GUEST_SERVER_PORT = "guest_server_port"
+    private const val KEY_SYNC_REMOTE_TO_LOCAL = "sync_remote_to_local"
 
     fun areReminderNotificationsEnabled(context: Context): Boolean {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -149,6 +150,16 @@ object SettingsStore {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
             if (name.isNullOrBlank()) remove(KEY_DB_NAME_OVERRIDE) else putString(KEY_DB_NAME_OVERRIDE, name)
         }
+    }
+
+    fun isSyncRemoteToLocalEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_SYNC_REMOTE_TO_LOCAL, false)
+    }
+
+    fun setSyncRemoteToLocalEnabled(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit { putBoolean(KEY_SYNC_REMOTE_TO_LOCAL, enabled) }
     }
 }
 

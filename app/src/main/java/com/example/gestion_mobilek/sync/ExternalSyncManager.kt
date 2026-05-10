@@ -15,6 +15,7 @@ import com.example.gestion_mobilek.ui.settings.*
 import com.example.gestion_mobilek.utils.*
 
 import android.content.Context
+import android.util.Log
 
 object ExternalSyncManager {
 
@@ -48,7 +49,23 @@ object ExternalSyncManager {
         if (!SettingsStore.isExternalDataSourceEnabled(context) || isPushRunning()) return
 
         Thread {
-            pushToRemote(context.applicationContext)
+            val appCtx = context.applicationContext
+            val pushResult = pushToRemote(appCtx)
+
+            if (pushResult.isSuccess && SettingsStore.isSyncRemoteToLocalEnabled(appCtx)) {
+                val pullResult = ExternalMariaDbSync.pullRemoteToLocal(appCtx)
+                pullResult
+                    .onSuccess { count ->
+                        Log.d("ExternalSyncManager", "pullRemoteToLocal OK : $count tables copiées")
+                        val localDb = DatabaseHelper(appCtx).getDatabaseForMode(useExternal = false)
+                        FutureReminderStore.loadAll(localDb).forEach { reminder ->
+                            FutureReminderScheduler.scheduleReminder(appCtx, reminder)
+                        }
+                    }
+                    .onFailure { e ->
+                        Log.d("ExternalSyncManager", "pullRemoteToLocal échec : ${e.message}")
+                    }
+            }
         }.start()
     }
 }

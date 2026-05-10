@@ -200,6 +200,23 @@ class MainActivity : AppCompatActivity() {
         setConnectionBusy(true)
         Thread {
             val pushResult = ExternalSyncManager.pushToRemote(applicationContext)
+
+            // Pull distant → local si activé (dans le thread, avant runOnUiThread)
+            val pullResult: Result<Int>? = if (
+                pushResult.isSuccess &&
+                SettingsStore.isSyncRemoteToLocalEnabled(applicationContext)
+            ) {
+                val result = ExternalMariaDbSync.pullRemoteToLocal(applicationContext)
+                if (result.isSuccess) {
+                    // Re-scheduler les rappels depuis bdd.db
+                    val localDb = DatabaseHelper(applicationContext).getDatabaseForMode(useExternal = false)
+                    FutureReminderStore.loadAll(localDb).forEach { reminder ->
+                        FutureReminderScheduler.scheduleReminder(applicationContext, reminder)
+                    }
+                }
+                result
+            } else null
+
             runOnUiThread {
                 // Always switch to local mode, even if remote push fails.
                 SettingsStore.setExternalDataSourceEnabled(applicationContext, false)
@@ -220,6 +237,18 @@ class MainActivity : AppCompatActivity() {
                             Toast.LENGTH_LONG
                         ).show()
                     }
+
+                pullResult?.onSuccess {
+                    Toast.makeText(this, getString(R.string.home_sync_remote_to_local_success), Toast.LENGTH_SHORT).show()
+                }?.onFailure { e ->
+                    val details = e.message?.takeIf { it.isNotBlank() } ?: "?"
+                    Toast.makeText(
+                        this,
+                        getString(R.string.home_sync_remote_to_local_failed) + " : " + details,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+
                 loadLastMeals()
             }
         }.start()

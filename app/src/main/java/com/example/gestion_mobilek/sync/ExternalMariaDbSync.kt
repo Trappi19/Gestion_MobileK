@@ -532,7 +532,7 @@ object ExternalMariaDbSync {
         }
     }
 
-    private fun pullTableFromRemote(
+    internal fun pullTableFromRemote(
         sqliteDb: SQLiteDatabase,
         remoteConn: Connection,
         databaseName: String,
@@ -715,6 +715,31 @@ object ExternalMariaDbSync {
             )
         }
         return true
+    }
+
+    fun pullRemoteToLocal(context: Context): Result<Int> {
+        return runCatching {
+            val config = resolveConfig(context)
+            openServerConnection(config).use { serverConn ->
+                val dbName = resolveDatabaseName(context, config, serverConn)
+                openDatabaseConnection(config, dbName).use { dbConn ->
+                    val localDb = DatabaseHelper(context).getDatabaseForMode(useExternal = false)
+                    FutureRecettesManager.ensureSchema(localDb)
+                    FutureReminderStore.ensureSchema(localDb)
+                    val remoteNames = remoteTableNames(dbConn, dbName)
+                    var synced = 0
+                    syncTables.forEach { localTable ->
+                        val remoteTable = resolveRemoteTableName(localTable, remoteNames)
+                        if (remoteTable != null) {
+                            if (pullTableFromRemote(localDb, dbConn, dbName, localTable, remoteTable)) {
+                                synced++
+                            }
+                        }
+                    }
+                    synced
+                }
+            }
+        }
     }
 
     fun connectAndPull(context: Context): Result<String> {
