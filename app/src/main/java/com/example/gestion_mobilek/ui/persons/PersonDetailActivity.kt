@@ -13,6 +13,7 @@ import com.example.gestion_mobilek.ui.main.*
 import com.example.gestion_mobilek.ui.persons.*
 import com.example.gestion_mobilek.ui.settings.*
 import com.example.gestion_mobilek.utils.*
+import com.example.gestion_mobilek.guest.*
 
 import android.content.Intent
 import android.database.sqlite.SQLiteException
@@ -64,6 +65,14 @@ class PersonDetailActivity : AppCompatActivity() {
             startActivity(Intent(this, PersonMealsHistoryActivity::class.java).apply {
                 putExtra("PERSON_ID", personId)
                 putExtra("PERSON_NAME", personName)
+            })
+        }
+
+        // Bouton invitation invité
+        findViewById<ImageButton>(R.id.btnInviteGuest).setOnClickListener {
+            startActivity(Intent(this, GuestInviteActivity::class.java).apply {
+                putExtra(GuestInviteActivity.EXTRA_PERSON_ID, personId)
+                putExtra(GuestInviteActivity.EXTRA_PERSON_NAME, personName)
             })
         }
 

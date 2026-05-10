@@ -57,6 +57,16 @@
             android:scaleType="centerInside"
             android:src="@android:drawable/ic_menu_edit"
             app:tint="@android:color/white"/>
+
+        <ImageButton
+            android:id="@+id/btnInviteGuest"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Inviter à remplir ses goûts"
+            android:scaleType="centerInside"
+            android:src="@android:drawable/ic_menu_share"
+            app:tint="@android:color/white"/>
     </LinearLayout>
 
     <!-- Deux colonnes : Aime | N'aime pas -->
