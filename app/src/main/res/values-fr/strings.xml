@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Gestion_MobileK</string>
+    <string name="app_name">Last Meal Memory</string>
     <string name="home_title">Last Meal Memory</string>
     <string name="home_menu">Menu</string>
     <string name="home_quick_access">Accès rapides</string>
