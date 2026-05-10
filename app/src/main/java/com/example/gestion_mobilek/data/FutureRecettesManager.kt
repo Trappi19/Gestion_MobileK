@@ -59,6 +59,7 @@ object FutureRecettesManager {
             )
             """.trimIndent()
         )
+        FutureReminderStore.ensureSchema(db)
     }
 
     fun resolveDateColumn(db: SQLiteDatabase): String {

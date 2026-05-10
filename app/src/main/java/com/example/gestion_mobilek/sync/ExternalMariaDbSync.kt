@@ -651,12 +651,17 @@ object ExternalMariaDbSync {
             if (deletedIds.isNotEmpty()) {
                 val inClause = deletedIds.joinToString(",") { "?" }
                 val delSql = "DELETE FROM ${escapeIdent(databaseName)}.${escapeIdent(remoteTable)} WHERE ${escapeIdent(remotePk)} IN ($inClause)"
-                remoteConn.prepareStatement(delSql).use { ps ->
-                    var idx = 1
-                    deletedIds.forEach { id ->
-                        ps.setString(idx++, id)
+                remoteConn.prepareStatement("SET FOREIGN_KEY_CHECKS = 0").use { it.execute() }
+                try {
+                    remoteConn.prepareStatement(delSql).use { ps ->
+                        var idx = 1
+                        deletedIds.forEach { id ->
+                            ps.setString(idx++, id)
+                        }
+                        ps.executeUpdate()
                     }
-                    ps.executeUpdate()
+                } finally {
+                    remoteConn.prepareStatement("SET FOREIGN_KEY_CHECKS = 1").use { it.execute() }
                 }
             }
             
