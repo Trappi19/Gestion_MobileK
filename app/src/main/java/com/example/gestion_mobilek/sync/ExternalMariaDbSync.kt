@@ -164,6 +164,8 @@ object ExternalMariaDbSync {
         )
     }
 
+<<<<<<< Updated upstream
+=======
     fun checkRemoteDbExists(context: Context): DbCheckResult {
         val config = resolveConfig(context)
         val dbName = config.forcedDatabase
@@ -256,11 +258,30 @@ object ExternalMariaDbSync {
                     table_name VARCHAR(100),
                     pk_val VARCHAR(100),
                     PRIMARY KEY (table_name, pk_val)
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS invite_tokens (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    token VARCHAR(64) NOT NULL UNIQUE,
+                    id_personne INT,
+                    nom_invite VARCHAR(255),
+                    expires_at BIGINT NOT NULL,
+                    used TINYINT(1) NOT NULL DEFAULT 0,
+                    created_at BIGINT NOT NULL
+                ) CHARACTER SET utf8mb4""",
+                """CREATE TABLE IF NOT EXISTS invite_responses (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    token VARCHAR(64) NOT NULL,
+                    aime_ingredient TEXT,
+                    aime_pas_ingredient TEXT,
+                    aime_plat TEXT,
+                    aime_pas_plat TEXT,
+                    submitted_at BIGINT NOT NULL
                 ) CHARACTER SET utf8mb4"""
             ).forEach { stmt.execute(it.trimIndent()) }
         }
     }
 
+>>>>>>> Stashed changes
     private fun openServerConnection(config: MariaDbConfig): Connection {
         return openConnectionWithFallback(config, database = null)
     }

@@ -23,12 +23,16 @@ object SettingsStore {
     private const val KEY_EXTERNAL_SOURCE_ENABLED = "external_source_enabled"
     private const val KEY_EXTERNAL_DATABASE_NAME = "external_database_name"
     private const val KEY_KEEP_EXTERNAL_MODE = "keep_external_mode"
+<<<<<<< Updated upstream
+=======
     private const val KEY_DB_HOST = "db_host"
     private const val KEY_DB_PORT = "db_port"
     private const val KEY_DB_USER = "db_user"
     private const val KEY_DB_PASSWORD = "db_password"
     private const val KEY_DB_NAME_OVERRIDE = "db_name_override"
     private const val KEY_DEV_RESET_DB = "dev_reset_db_on_launch"
+    private const val KEY_GUEST_SERVER_PORT = "guest_server_port"
+>>>>>>> Stashed changes
 
     fun areReminderNotificationsEnabled(context: Context): Boolean {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -75,6 +79,8 @@ object SettingsStore {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit { putBoolean(KEY_KEEP_EXTERNAL_MODE, keep) }
     }
+<<<<<<< Updated upstream
+=======
 
     fun getDbHost(context: Context): String? =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -129,6 +135,17 @@ object SettingsStore {
             .edit { putBoolean(KEY_DEV_RESET_DB, enabled) }
     }
 
+    fun getGuestServerPort(context: Context): Int {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val port = prefs.getInt(KEY_GUEST_SERVER_PORT, 0)
+        return if (port > 0) port else 8765
+    }
+
+    fun setGuestServerPort(context: Context, port: Int) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit { putInt(KEY_GUEST_SERVER_PORT, port) }
+    }
+
     fun getDbNameOverride(context: Context): String? =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(KEY_DB_NAME_OVERRIDE, null)?.takeIf { it.isNotBlank() }
@@ -138,6 +155,7 @@ object SettingsStore {
             if (name.isNullOrBlank()) remove(KEY_DB_NAME_OVERRIDE) else putString(KEY_DB_NAME_OVERRIDE, name)
         }
     }
+>>>>>>> Stashed changes
 }
 
 

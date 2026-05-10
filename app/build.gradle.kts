@@ -86,6 +86,11 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation("org.mariadb.jdbc:mariadb-java-client:3.4.1")
+<<<<<<< Updated upstream
+=======
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
+    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0") { isTransitive = false }
     implementation("com.kizitonwose.calendar:view:2.10.1")
     implementation("com.google.android.gms:play-services-auth:21.5.1")
     implementation("com.google.api-client:google-api-client-android:2.2.0") {
@@ -94,6 +99,7 @@ dependencies {
     implementation("com.google.apis:google-api-services-calendar:v3-rev20231123-2.0.0") {
         exclude(group = "org.apache.httpcomponents")
     }
+>>>>>>> Stashed changes
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
