@@ -60,3 +60,4 @@ lint/tmp/
 
 # ─── Claude / outils internes ────────────────────────────────────────────────
 /.claude
+/.idea/caches
