@@ -164,8 +164,6 @@ object ExternalMariaDbSync {
         )
     }
 
-<<<<<<< Updated upstream
-=======
     fun checkRemoteDbExists(context: Context): DbCheckResult {
         val config = resolveConfig(context)
         val dbName = config.forcedDatabase
@@ -281,7 +279,6 @@ object ExternalMariaDbSync {
         }
     }
 
->>>>>>> Stashed changes
     private fun openServerConnection(config: MariaDbConfig): Connection {
         return openConnectionWithFallback(config, database = null)
     }
